@@ -1,0 +1,20 @@
+loki.source.kafka "raw" {
+  brokers                = ["kafka-container:9092"]
+  topics                 = ["raw-logs"]
+  forward_to             = [loki.write.http.receiver]
+  relabel_rules          = loki.relabel.kafka.rules
+  version                = "2.0.0"
+  labels                = {service_name = "raw_kafka"}
+}
+loki.relabel "kafka" {
+  forward_to      = [loki.write.http.receiver]
+  rule {
+    source_labels = ["raw_kafka"]
+    target_label  = "logs"
+  }
+}
+loki.write "http" {
+  endpoint {
+    url = "http://localhost:3100/loki/api/v1/push"
+  }
+}
