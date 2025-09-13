@@ -1,0 +1,19 @@
+env: "prod"
+token_ttl: 72h
+grpc:
+  auth:
+    port: 44000
+    timeout: 10h
+  profiles:
+    port: 44002
+    timeout: 10s
+clients:
+  auth:
+    timeout: "4s"
+    retriesCount: 5
+    insecure: true
+  profiles:
+    timeout: "4s"
+    retriesCount: 5
+    insecure: true
+app_secret: "yaro21u527"

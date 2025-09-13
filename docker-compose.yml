@@ -1,33 +1,54 @@
 services:
-  logger_host:
-    container_name: $COMPOSE_PROJECT_NAME
-    image: $COMPOSE_PROJECT_NAME:1.0
+  auth_go:
     build:
-      dockerfile: Dockerfile
-      context: $CURRENTPATH
+      context: .
+      dockerfile: ./cmd/auth/Dockerfile
     ports:
-      - "12345:12345"
-      - "3100:3100"
-      - "3000:3000"
+      - "44000:44000"
+    image: auth-go-image
+    container_name: auth_go
+    restart: unless-stopped
+    networks:
+      - app-network
     volumes:
-      - db-data:/loki
-      - grafana-storage:/var/lib/grafana
-    entrypoint: "/bin/sh -c /entry_point.sh"
-networks:
-  default:
-    name: discordnet
-    external: true
+      - ./files:/app/files
+    depends_on:
+      - pg_db
+  clients_go:
+    build:
+      context: .
+      dockerfile: ./internal/clients/Dockerfile
+    ports:
+      - "8000:8000"
+    image: clients-go-image
+    container_name: clients_go
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      - ./files:/app/files
+  pg_db:
+    image: postgres:16.4
+    ports:
+      - "54320:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    volumes:
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - pg_data:/var/lib/postgresql/data/
+    container_name: pg_db
+    restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
-  db-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /IO/loki_data
-  grafana-storage:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /IO/grafana_data
+  pg_data:
+  go_back:
+
+networks:
+  app-network:
+    driver: bridge
