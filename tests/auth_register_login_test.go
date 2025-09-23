@@ -1,8 +1,8 @@
 package tests
 
 import (
-	authv1 "idea-store-auth/gen/go/auth"
-	authSuite "idea-store-auth/tests/suite/auth"
+	authv1 "discord_backend/gen/go/auth"
+	authSuite "discord_backend/tests/suite/auth"
 	"testing"
 	"time"
 

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
+	authv1 "discord_backend/gen/go/auth"
+	"discord_backend/internal/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
-	authv1 "idea-store-auth/gen/go/auth"
-	"idea-store-auth/internal/utils"
 	"log/slog"
 	"net/http"
 	"time"

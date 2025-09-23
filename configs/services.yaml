@@ -5,7 +5,7 @@ auth_service:
   address: "0.0.0.0"
   port: "44000"
 
-profiles_go:
-  domain: "profiles_go"
+relations_go:
+  domain: "relations_go"
   address: "0.0.0.0"
   port: "44002"

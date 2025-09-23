@@ -2,12 +2,12 @@ package auth
 
 import (
 	"context"
+	"discord_backend/internal/domain/models"
+	"discord_backend/internal/lib/jwt"
+	"discord_backend/internal/lib/logger/sl"
+	"discord_backend/internal/storage"
 	"errors"
 	"fmt"
-	"idea-store-auth/internal/domain/models"
-	"idea-store-auth/internal/lib/jwt"
-	"idea-store-auth/internal/lib/logger/sl"
-	"idea-store-auth/internal/storage"
 	"log/slog"
 	"time"
 
@@ -57,20 +57,20 @@ func (a *Auth) Login(
 ) (string, error) {
 	user, err := a.userProvider.User(ctx, email)
 	if err != nil {
-		if errors.Is(err, storage.ErrAppNotFound) {
+		if errors.Is(err, storage.ErrUserNotFound) {
 			a.log.Warn("user not found", sl.Err(err))
 
-			return "", fmt.Errorf("servic Login error: " + ErrInvalidCredentials.Error())
+			return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
 		}
 
 		a.log.Error("failed to get user", sl.Err(err))
-		return "", fmt.Errorf("servic Login error: " + ErrInvalidCredentials.Error())
+		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
 	}
 
 	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
 		a.log.Info("invalid credentials", sl.Err(err))
 
-		return "", fmt.Errorf("servic Login error: " + ErrInvalidCredentials.Error())
+		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
 	}
 
 	token, err := jwt.NewToken(user, a.tokenTTL)

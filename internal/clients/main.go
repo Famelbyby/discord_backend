@@ -1,10 +1,10 @@
 package main
 
 import (
+	common "discord_backend/cmd"
+	"discord_backend/internal/config"
+	"discord_backend/internal/middlewares"
 	"fmt"
-	common "idea-store-auth/cmd"
-	"idea-store-auth/internal/config"
-	"idea-store-auth/internal/middlewares"
 	"log"
 	"log/slog"
 	"net/http"
@@ -25,45 +25,16 @@ var (
 func main() {
 
 	cfg := config.MustLoad()
-	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
 	router := mux.NewRouter()
+
+	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
 	router.HandleFunc("/api/register", authClient.Regsiter).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/login", authClient.Login).Methods(http.MethodPost, http.MethodOptions)
 
-	/*router.HandleFunc("/app/files/{name}", GetImages).Methods(http.MethodGet)
+	relationsClient, _ := NewRelationsClient(common.GrpcRelationsAddress(cfg), cfg.Clients.Relations.Timeout, cfg.Clients.Relations.RetriesCount)
+	router.HandleFunc("/api/relation", relationsClient.CreateNewRelation).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/friends/{id}", relationsClient.SendFriendOffer).Methods(http.MethodPost, http.MethodOptions)
 
-	router.HandleFunc("/api/idea", ideasClient.Create).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/idea", ideasClient.GetIdea).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/ideas", ideasClient.GetAllIdeas).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/ideas", ideasClient.GetIdeas).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/search-ideas", ideasClient.GetIdeasFromSearch).Methods(http.MethodGet, http.MethodOptions)
-
-	router.HandleFunc("/api/board", boardsClient.CreateBoard).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/board", boardsClient.GetBoard).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/board", boardsClient.DeleteBoard).Methods(http.MethodDelete, http.MethodOptions)
-	router.HandleFunc("/api/my-boards", boardsClient.GetCurrentUsersBoards).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/boards", boardsClient.GetBoards).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/ideas-in-board", boardsClient.GetIdeasInBoard).Methods(http.MethodGet, http.MethodOptions)
-
-
-	router.HandleFunc("/api/profile", profilesClient.CreateProfile).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/profile", profilesClient.UpdateProfile).Methods(http.MethodPut, http.MethodOptions)
-	router.HandleFunc("/api/profile", profilesClient.GetProfile).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/my-profile", profilesClient.GetCurrentProfile).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/toggle-save-idea", profilesClient.ToggleSaveIdea).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/is-idea-saved", profilesClient.IsIdeaSaved).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/get-saved-ideas", profilesClient.GetSavedIdeas).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/search-profiles", profilesClient.GetProfilesFromSearch).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/toggle-like-idea", profilesClient.ToggleLikeIdea).Methods(http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/is-idea-liked", profilesClient.IsIdeaLiked).Methods(http.MethodGet, http.MethodOptions)
-
-	router.HandleFunc("/api/comments", commentsClient.GetComments).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/comment", commentsClient.CreateComment).Methods(http.MethodPost, http.MethodOptions)
-
-	router.HandleFunc("/api/chats", chatsClient.GetChats).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/chat_ws", chatsClient.HandleChatWebSocket).Methods(http.MethodGet, http.MethodPost, http.MethodOptions)
-	router.HandleFunc("/api/messages", chatsClient.GetMessages).Methods(http.MethodGet, http.MethodOptions)
-	router.HandleFunc("/api/message", chatsClient.SendMessage).Methods(http.MethodPost, http.MethodOptions)*/
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
 

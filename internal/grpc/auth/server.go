@@ -2,10 +2,10 @@ package auth
 
 import (
 	"context"
+	authv1 "discord_backend/gen/go/auth"
+	"discord_backend/internal/services/auth"
 	"errors"
 	"fmt"
-	authv1 "idea-store-auth/gen/go/auth"
-	"idea-store-auth/internal/services/auth"
 	"log/slog"
 
 	"google.golang.org/grpc"

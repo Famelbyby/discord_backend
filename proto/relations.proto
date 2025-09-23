@@ -1,0 +1,110 @@
+syntax = "proto3";
+import "google/protobuf/empty.proto";
+package relations;
+
+option go_package = "discord.relations.v1;relationsv1";
+
+service Relations {
+  rpc CreateNewRelation(CreateNewRelationRequest) returns (google.protobuf.Empty){}
+  rpc SendFriendOffer (SendFriendOfferRequest) returns (google.protobuf.Empty){}
+  rpc CancelFriendOffer (CancelFriendOfferRequest) returns (google.protobuf.Empty){}
+  rpc AcceptFriendOffer (AcceptFriendOfferRequest) returns (google.protobuf.Empty){}
+  rpc DeclineFriendOffer (DeclineFriendOfferRequest) returns (google.protobuf.Empty){}
+  rpc RemoveFriend (RemoveFriendRequest) returns (google.protobuf.Empty){}
+  rpc BlockUser (BlockUserRequest) returns (google.protobuf.Empty){}
+  rpc UnblockUser (UnblockUserRequest) returns (google.protobuf.Empty){}
+  rpc GetUserRelation (GetUserRelationRequest) returns (GetUserRelationResponse);
+  rpc GetAllFriends (GetAllFriendsRequest) returns (GetAllFriendsResponse);
+  rpc GetAllIncomingOffers (GetAllIncomingOffersRequest) returns (GetAllIncomingOffersResponse);
+  rpc GetAllOutgoingOffers (GetAllOutgoingOffersRequest) returns (GetAllOutgoingOffersResponse);
+  rpc GetAllBlockedUsers (GetAllBlockedUsersRequest) returns (GetAllBlockedUsersResponse);
+}
+
+message CreateNewRelationRequest{
+  string userId = 1;
+}
+
+message SendFriendOfferRequest {
+  string senderId = 1;
+  string recieverId = 2;
+}
+message CancelFriendOfferRequest{
+  string senderId = 1;
+  string recieverId = 2;
+}
+
+message AcceptFriendOfferRequest{
+  string senderId = 1;
+  string recieverId = 2;
+}
+
+message DeclineFriendOfferRequest{
+  string senderId = 1;
+  string recieverId = 2;
+}
+
+message RemoveFriendRequest {
+  string senderId = 1;
+  string toRemoveId = 2;
+}
+message BlockUserRequest {
+  string senderId=1;
+  string toBlockId=2;
+}
+
+message UnblockUserRequest {
+  string senderId=1;
+  string toUnblockId=2;
+}
+
+message GetUserRelationRequest{
+  string senderId=1;
+  string targetId=2;
+}
+
+message GetUserRelationResponse{
+  bool isFriend=1;
+  bool isIncoming=2;
+  bool isOutgoing=3;
+  bool isBlocked=4;
+}
+
+message GetAllFriendsRequest{
+  string senderId=1;
+  int64 page=2;
+  int64 limit=3;
+}
+
+message GetAllFriendsResponse{
+  repeated string friends=1;
+}
+
+message GetAllIncomingOffersRequest{
+  string senderId=1;
+  int64 page=2;
+  int64 limit=3;
+}
+
+message GetAllIncomingOffersResponse{
+  repeated string ids=1;
+}
+
+message GetAllOutgoingOffersRequest{
+  string senderId=1;
+  int64 page=2;
+  int64 limit=3;
+}
+
+message GetAllOutgoingOffersResponse{
+  repeated string ids=1;
+}
+
+message GetAllBlockedUsersRequest{
+  string senderId=1;
+  int64 page=2;
+  int64 limit=3;
+}
+
+message GetAllBlockedUsersResponse{
+  repeated string ids=1;
+}

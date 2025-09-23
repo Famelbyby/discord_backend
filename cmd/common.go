@@ -1,9 +1,9 @@
 package common
 
 import (
+	"discord_backend/internal/config"
+	"discord_backend/internal/lib/logger/handlers/slogpretty"
 	"fmt"
-	"idea-store-auth/internal/config"
-	"idea-store-auth/internal/lib/logger/handlers/slogpretty"
 	"log/slog"
 	"os"
 )
@@ -47,4 +47,8 @@ func SetupPrettySlog() *slog.Logger {
 
 func GrpcAuthAddress(cfg *config.Config) string {
 	return fmt.Sprintf("auth_go:%v", cfg.GRPC.AuthMS.Port)
+}
+
+func GrpcRelationsAddress(cfg *config.Config) string {
+	return fmt.Sprintf("relations_go:%v", cfg.GRPC.RelationsMS.Port)
 }

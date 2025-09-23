@@ -2,8 +2,8 @@ package postgre
 
 import (
 	"context"
+	"discord_backend/internal/domain/models"
 	"fmt"
-	"idea-store-auth/internal/domain/models"
 	"log/slog"
 )
 

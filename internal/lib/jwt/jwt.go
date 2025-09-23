@@ -1,7 +1,7 @@
 package jwt
 
 import (
-	"idea-store-auth/internal/domain/models"
+	"discord_backend/internal/domain/models"
 	"os"
 	"time"
 

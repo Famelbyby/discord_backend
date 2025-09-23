@@ -1,8 +1,8 @@
 package postgre
 
 import (
+	"discord_backend/configs/postgres"
 	"fmt"
-	"idea-store-auth/configs/postgres"
 	"os"
 	"strconv"
 	"strings"

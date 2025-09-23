@@ -1,7 +1,7 @@
 package middlewares
 
 import (
-	"idea-store-auth/internal/utils"
+	"discord_backend/internal/utils"
 	"net/http"
 )
 

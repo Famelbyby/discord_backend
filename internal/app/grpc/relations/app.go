@@ -10,13 +10,13 @@ import (
 	"google.golang.org/grpc/status"
 
 	common "discord_backend/internal/app"
-	authgrpc "discord_backend/internal/grpc/auth"
+	relationsgrpc "discord_backend/internal/grpc/relations"
 )
 
 // New creates new gRPC server app.
 func New(
 	log *slog.Logger,
-	authService authgrpc.Auth,
+	relationsService relationsgrpc.Relations,
 	port int,
 ) *common.App {
 	loggingOpts := []logging.Option{
@@ -40,7 +40,7 @@ func New(
 		logging.UnaryServerInterceptor(common.InterceptorLogger(log), loggingOpts...),
 	))
 
-	authgrpc.Register(gRPCServer, authService)
+	relationsgrpc.Register(gRPCServer, relationsService, log)
 
 	return &common.App{
 		Log:        log,

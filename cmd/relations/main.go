@@ -6,7 +6,7 @@ import (
 	"syscall"
 
 	common "discord_backend/cmd"
-	appAuth "discord_backend/internal/app/auth"
+	appRelations "discord_backend/internal/app/relations"
 	"discord_backend/internal/config"
 )
 
@@ -15,10 +15,15 @@ func main() {
 
 	log := common.SetupLogger(cfg.Env)
 
-	authApp := appAuth.New(log, cfg.GRPC.AuthMS.Port, cfg.TokenTTL)
+	relationsApp, err := appRelations.New(log, cfg.GRPC.RelationsMS.Port)
+
+	if err != nil {
+		log.Error("[main] error starting relations app: " + err.Error())
+		panic("cant start relations app, error: " + err.Error())
+	}
 
 	go func() {
-		authApp.GRPCServer.MustRun()
+		relationsApp.GRPCServer.MustRun()
 	}()
 
 	stop := make(chan os.Signal, 1)
@@ -26,6 +31,6 @@ func main() {
 
 	<-stop
 
-	authApp.GRPCServer.Stop()
+	relationsApp.GRPCServer.Stop()
 	log.Info("Gracefully stopped")
 }

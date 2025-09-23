@@ -10,10 +10,23 @@ services:
     restart: unless-stopped
     networks:
       - app-network
-    volumes:
-      - ./files:/app/files
     depends_on:
       - pg_db
+
+  relations_go:
+    build:
+      context: .
+      dockerfile: ./cmd/relations/Dockerfile
+    ports:
+      - "44002:44002"
+    image: relations-go-image
+    container_name: relations_go
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      - mongo_db
+
   clients_go:
     build:
       context: .
@@ -27,6 +40,7 @@ services:
       - app-network
     volumes:
       - ./files:/app/files
+
   pg_db:
     image: postgres:16.4
     ports:
@@ -45,9 +59,24 @@ services:
     networks:
       - app-network
 
+  mongo_db:
+    image: mongo
+    container_name: mongo-db
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      #- MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      #- MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+      - MONGO_INITDB_DATABASE=${MONGO_INITDB_DATABASE}
+    ports:
+      - "27017:27017"
+    networks:
+      - app-network
+
 volumes:
   pg_data:
   go_back:
+  mongo_data:
 
 networks:
   app-network:

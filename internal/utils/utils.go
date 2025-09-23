@@ -51,9 +51,7 @@ func MoveFile(sourcePath, destPath string) error {
 	}
 	return nil
 }
-func Remove(slice []int, s int) []int {
-	return append(slice[:s], slice[s+1:]...)
-}
+
 func DateTimeToSecondsForDb(date string) (string, error) {
 	time, err := time.Parse("02.01.2006 15:04:05", date)
 	time = time.AddDate(-55, 0, 0)
@@ -62,4 +60,13 @@ func DateTimeToSecondsForDb(date string) (string, error) {
 	}
 
 	return fmt.Sprint(time.Unix()), nil
+}
+func RemoveByValue(slice []string, value string) []string {
+	result := []string{}
+	for _, v := range slice {
+		if v != value {
+			result = append(result, v)
+		}
+	}
+	return result
 }

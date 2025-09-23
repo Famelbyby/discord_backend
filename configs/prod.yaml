@@ -4,7 +4,7 @@ grpc:
   auth:
     port: 44000
     timeout: 10h
-  profiles:
+  relations:
     port: 44002
     timeout: 10s
 clients:
@@ -12,7 +12,7 @@ clients:
     timeout: "4s"
     retriesCount: 5
     insecure: true
-  profiles:
+  relations:
     timeout: "4s"
     retriesCount: 5
     insecure: true

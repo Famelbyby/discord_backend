@@ -1,10 +1,10 @@
 package app
 
 import (
-	common "idea-store-auth/internal/app"
-	grpcApp "idea-store-auth/internal/app/grpc/auth"
-	"idea-store-auth/internal/services/auth"
-	"idea-store-auth/internal/storage/postgre"
+	common "discord_backend/internal/app"
+	grpcApp "discord_backend/internal/app/grpc/auth"
+	"discord_backend/internal/services/auth"
+	"discord_backend/internal/storage/postgre"
 	"log/slog"
 	"time"
 )

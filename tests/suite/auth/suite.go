@@ -2,8 +2,8 @@ package suite
 
 import (
 	"context"
-	authv1 "idea-store-auth/gen/go/auth"
-	"idea-store-auth/internal/config"
+	authv1 "discord_backend/gen/go/auth"
+	"discord_backend/internal/config"
 	"net"
 	"strconv"
 	"testing"
