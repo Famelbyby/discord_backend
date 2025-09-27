@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -22,7 +23,8 @@ type RelationsClient struct {
 
 func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Request) {
 	type createNewRelationRequest struct {
-		UserId string `json:"userId"`
+		UserId string `json:"id,omitempty"`
+		Error  string `json:"error,omitempty"`
 	}
 
 	var req createNewRelationRequest
@@ -53,7 +55,8 @@ func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request
 	}
 
 	type sendFriendOfferResponse struct {
-		UserId string `json:"id"`
+		UserId string `json:"id,omitempty"`
+		Error  string `json:"error,omitempty"`
 	}
 
 	var req sendFriendOfferRequest
@@ -85,6 +88,151 @@ func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Request) {
+	type acceptFriendOfferRequest struct {
+		FriendId string `json:"friendId"`
+	}
+
+	type acceptFriendOfferResponse struct {
+		UserId string `json:"id,omitempty"`
+		Error  string `json:"error,omitempty"`
+	}
+
+	var req acceptFriendOfferRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		slog.Error("[AcceptFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[AcceptFriendOffer] senderId=" + senderId)
+
+	request := &relationsv1.AcceptFriendOfferRequest{
+		RecieverId: req.FriendId,
+		SenderId:   senderId,
+	}
+
+	_, err = c.relationsAPi.AcceptFriendOffer(r.Context(), request)
+	if err != nil {
+		slog.Error("[AcceptFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	resp := acceptFriendOfferResponse{UserId: senderId}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[AcceptFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Request) {
+	type declineFriendOfferRequest struct {
+		FriendId string `json:"friendId"`
+	}
+
+	type declineFriendOfferResponse struct {
+		UserId string `json:"id,omitempty"`
+		Error  string `json:"error,omitempty"`
+	}
+
+	var req declineFriendOfferRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[DeclineFriendOffer] senderId=" + senderId)
+
+	request := &relationsv1.DeclineFriendOfferRequest{
+		RecieverId: req.FriendId,
+		SenderId:   senderId,
+	}
+
+	_, err = c.relationsAPi.DeclineFriendOffer(r.Context(), request)
+	if err != nil {
+		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	resp := declineFriendOfferResponse{UserId: senderId}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Request) {
+
+	type cancelFriendOfferResponse struct {
+		UserId string `json:"id,omitempty"`
+		Error  string `json:"error,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[CancelFriendOffer] senderId=" + senderId)
+
+	friendId := params.Get("friendId")
+	if friendId == "" {
+		resp := cancelFriendOfferResponse{Error: "no friendId given"}
+		respJson, err := json.Marshal(resp)
+		if err != nil {
+			slog.Error("[CancelFriendOffer] client error: " + err.Error())
+			utils.WriteError(w, "Internal error: "+err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusCreated)
+		w.Write(respJson)
+	}
+
+	request := &relationsv1.CancelFriendOfferRequest{
+		RecieverId: friendId,
+		SenderId:   senderId,
+	}
+
+	_, err := c.relationsAPi.CancelFriendOffer(r.Context(), request)
+	if err != nil {
+		slog.Error("[CancelFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	resp := cancelFriendOfferResponse{UserId: senderId}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[CancelFriendOffer] client error: " + err.Error())
 		utils.WriteError(w, "Internal error: "+err.Error())
 		return
 	}
