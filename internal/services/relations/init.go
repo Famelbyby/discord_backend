@@ -11,17 +11,12 @@ type RelationsService struct {
 	relations Relations
 }
 
-// DeclineFriendOffer implements relations.Relations.
-func (r *RelationsService) DeclineFriendOffer(ctx context.Context, senderId string, revieverId string) error {
-	panic("unimplemented")
-}
-
 type Relations interface {
 	CreateNewRelation(ctx context.Context, userId string) error
-	SendFriendOffer(ctx context.Context, senderId, recievedId string) (string, error)
-	CancelFriendOffer(ctx context.Context, senderId, recieverId string) (string, error)
+	SendFriendOffer(ctx context.Context, senderId, recievedId string) error
+	CancelFriendOffer(ctx context.Context, senderId, recieverId string) error
 	AcceptFriendRequest(ctx context.Context, senderId, recievedId string) error
-	DeclineFriendRequest(ctx context.Context, senderId, recievedId string) error
+	DeclineFriendOffer(ctx context.Context, senderId, recievedId string) error
 	RemoveFriend(ctx context.Context, senderId, toRemoveId string) error
 	BlockUser(ctx context.Context, senderId, toBlockId string) error
 	UnblockUser(ctx context.Context, senderId, toUnblockId string) error

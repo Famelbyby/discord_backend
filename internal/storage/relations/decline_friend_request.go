@@ -11,8 +11,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func (s *RelationsStorage) DeclineFriendRequest(ctx context.Context, senderId string, recieverId string) error {
-	s.log.Info("[DeclineFriendRequest] storage started")
+func (s *RelationsStorage) DeclineFriendOffer(ctx context.Context, senderId string, recieverId string) error {
+	s.log.Info("[DeclineFriendOffer] storage started")
 
 	filter := bson.M{"user_id": senderId}
 
@@ -24,8 +24,8 @@ func (s *RelationsStorage) DeclineFriendRequest(ctx context.Context, senderId st
 			return storage.ErrUserNotFound
 		}
 
-		slog.Error("[DeclineFriendRequest] storage error: " + err.Error())
-		return errors.New("[DeclineFriendRequest] storage error: " + err.Error())
+		slog.Error("[DeclineFriendOffer] storage error: " + err.Error())
+		return errors.New("[DeclineFriendOffer] storage error: " + err.Error())
 	}
 
 	senderRelation.OutgoingIds = utils.RemoveByValue(senderRelation.OutgoingIds, recieverId)
@@ -35,8 +35,8 @@ func (s *RelationsStorage) DeclineFriendRequest(ctx context.Context, senderId st
 	}
 	_, err = s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		slog.Error("[DeclineFriendRequest] storage error: " + err.Error())
-		return errors.New("[DeclineFriendRequest] storage error: " + err.Error())
+		slog.Error("[DeclineFriendOffer] storage error: " + err.Error())
+		return errors.New("[DeclineFriendOffer] storage error: " + err.Error())
 	}
 
 	filter = bson.M{"user_id": recieverId}
@@ -49,8 +49,8 @@ func (s *RelationsStorage) DeclineFriendRequest(ctx context.Context, senderId st
 			return storage.ErrUserNotFound
 		}
 
-		slog.Error("[DeclineFriendRequest] storage error: " + err.Error())
-		return errors.New("[DeclineFriendRequest] storage error: " + err.Error())
+		slog.Error("[DeclineFriendOffer] storage error: " + err.Error())
+		return errors.New("[DeclineFriendOffer] storage error: " + err.Error())
 	}
 	recieverRelation.IncomingIds = utils.RemoveByValue(recieverRelation.IncomingIds, senderId)
 
@@ -59,8 +59,8 @@ func (s *RelationsStorage) DeclineFriendRequest(ctx context.Context, senderId st
 	}
 	_, err = s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		slog.Error("[DeclineFriendRequest] storage error: " + err.Error())
-		return errors.New("[DeclineFriendRequest] storage error: " + err.Error())
+		slog.Error("[DeclineFriendOffer] storage error: " + err.Error())
+		return errors.New("[DeclineFriendOffer] storage error: " + err.Error())
 	}
 
 	return nil

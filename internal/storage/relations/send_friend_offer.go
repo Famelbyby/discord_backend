@@ -11,7 +11,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, recieverId string) (string, error) {
+func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, recieverId string) error {
 	s.log.Info("[SendFriendRequest] storage started, sender id=" + senderId + " recieverId=" + recieverId)
 
 	filter := bson.M{"user_id": senderId}
@@ -21,14 +21,14 @@ func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, reciev
 	err := s.collection.FindOne(ctx, filter).Decode(&senderRelation)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", storage.ErrUserNotFound
+			return storage.ErrUserNotFound
 		}
 
 		slog.Error("[SendFriendRequest] storage error: " + err.Error())
-		return "", errors.New("[SendFriendRequest] storage error: " + err.Error())
+		return errors.New("[SendFriendRequest] storage error: " + err.Error())
 	}
 	if slices.Contains(senderRelation.OutgoingIds, recieverId) {
-		return "", errors.New("friend offer is already sent")
+		return errors.New("friend offer is already sent")
 	}
 	senderRelation.OutgoingIds = append(senderRelation.OutgoingIds, recieverId)
 
@@ -38,7 +38,7 @@ func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, reciev
 	_, err = s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		slog.Error("[SendFriendRequest] storage error: " + err.Error())
-		return "", errors.New("[SendFriendRequest] storage error: " + err.Error())
+		return errors.New("[SendFriendRequest] storage error: " + err.Error())
 	}
 
 	filter = bson.M{"user_id": recieverId}
@@ -48,11 +48,11 @@ func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, reciev
 	err = s.collection.FindOne(ctx, filter).Decode(&recieverRelation)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
-			return "", storage.ErrUserNotFound
+			return storage.ErrUserNotFound
 		}
 
 		slog.Error("[SendFriendRequest] storage error: " + err.Error())
-		return "", errors.New("[SendFriendRequest] storage error: " + err.Error())
+		return errors.New("[SendFriendRequest] storage error: " + err.Error())
 	}
 	recieverRelation.IncomingIds = append(recieverRelation.IncomingIds, senderId)
 
@@ -62,8 +62,8 @@ func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, reciev
 	_, err = s.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
 		slog.Error("[SendFriendRequest] storage error: " + err.Error())
-		return "", errors.New("[SendFriendRequest] storage error: " + err.Error())
+		return errors.New("[SendFriendRequest] storage error: " + err.Error())
 	}
 
-	return recieverId, nil
+	return nil
 }
