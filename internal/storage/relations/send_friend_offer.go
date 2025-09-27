@@ -5,6 +5,7 @@ import (
 	"discord_backend/internal/storage"
 	"errors"
 	"log/slog"
+	"slices"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -25,6 +26,9 @@ func (s *RelationsStorage) SendFriendOffer(ctx context.Context, senderId, reciev
 
 		slog.Error("[SendFriendRequest] storage error: " + err.Error())
 		return "", errors.New("[SendFriendRequest] storage error: " + err.Error())
+	}
+	if slices.Contains(senderRelation.OutgoingIds, recieverId) {
+		return "", errors.New("friend offer is already sent")
 	}
 	senderRelation.OutgoingIds = append(senderRelation.OutgoingIds, recieverId)
 

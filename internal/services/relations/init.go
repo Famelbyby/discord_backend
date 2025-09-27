@@ -27,9 +27,9 @@ type Relations interface {
 	UnblockUser(ctx context.Context, senderId, toUnblockId string) error
 	GetUserRelation(ctx context.Context, senderId, targetId string) (models.UserRelation, error)
 	GetAllFriends(ctx context.Context, senderId string, page, limit int64) ([]string, error)
-	GetAllIncomingOffers(ctx context.Context, senderId string) ([]string, error)
-	GetAllOutgoingOffers(ctx context.Context, senderId string) ([]string, error)
-	GetAllBlockedUsers(ctx context.Context, senderId string) ([]string, error)
+	GetAllIncomingOffers(ctx context.Context, senderId string, page int64, limit int64) ([]string, error)
+	GetAllOutgoingOffers(ctx context.Context, senderId string, page int64, limit int64) ([]string, error)
+	GetAllBlockedUsers(ctx context.Context, senderId string, page int64, limit int64) ([]string, error)
 }
 
 func New(log *slog.Logger, relations Relations) *RelationsService {
