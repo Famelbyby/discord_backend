@@ -2,6 +2,7 @@ package relations
 
 import (
 	"context"
+	"discord_backend/internal/storage"
 	"fmt"
 )
 
@@ -33,6 +34,9 @@ func (r *RelationsService) BlockUser(ctx context.Context, senderId string, toBlo
 			r.log.Error("[BlockUser] service error: " + err.Error())
 			return fmt.Errorf("[BlockUser] service error: " + err.Error())
 		}
+	}
+	if relation.IsBlocked {
+		return storage.ErrUserAlreadyBlocked
 	}
 
 	err = r.relations.BlockUser(ctx, senderId, toBlockId)

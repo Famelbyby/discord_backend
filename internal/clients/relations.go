@@ -2,12 +2,14 @@ package main
 
 import (
 	relationsv1 "discord_backend/gen/go/relations"
+	"discord_backend/internal/storage"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -41,7 +43,7 @@ func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Reque
 	_, err = c.relationsAPi.CreateNewRelation(r.Context(), request)
 	if err != nil {
 		slog.Error("[CreateNewRelation] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
@@ -79,7 +81,20 @@ func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request
 	_, err = c.relationsAPi.SendFriendOffer(r.Context(), request)
 	if err != nil {
 		slog.Error("[SendFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		outputError := "Internal error"
+		if strings.Contains(err.Error(), storage.ErrUserNotFound.Error()) {
+			outputError = storage.ErrUserNotFound.Error()
+		}
+		if strings.Contains(err.Error(), storage.ErrFriendOfferAlreadySent.Error()) {
+			outputError = storage.ErrFriendOfferAlreadySent.Error()
+		}
+		if strings.Contains(err.Error(), storage.ErrCantAddBlockedUser.Error()) {
+			outputError = storage.ErrCantAddBlockedUser.Error()
+		}
+		if strings.Contains(err.Error(), storage.ErrCantAddAlreadyFriend.Error()) {
+			outputError = storage.ErrCantAddAlreadyFriend.Error()
+		}
+		utils.WriteError(w, outputError)
 		return
 	}
 
@@ -87,7 +102,7 @@ func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[SendFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
@@ -126,7 +141,11 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 	_, err = c.relationsAPi.AcceptFriendOffer(r.Context(), request)
 	if err != nil {
 		slog.Error("[AcceptFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		outputError := "Internal error"
+		if strings.Contains(err.Error(), storage.ErrCantAddAlreadyFriend.Error()) {
+			outputError = storage.ErrCantAddAlreadyFriend.Error()
+		}
+		utils.WriteError(w, outputError)
 		return
 	}
 
@@ -205,15 +224,8 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 
 	friendId := params.Get("friendId")
 	if friendId == "" {
-		resp := cancelFriendOfferResponse{Error: "no friendId given"}
-		respJson, err := json.Marshal(resp)
-		if err != nil {
-			slog.Error("[CancelFriendOffer] client error: " + err.Error())
-			utils.WriteError(w, "Internal error: "+err.Error())
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(respJson)
+		utils.WriteError(w, "no friendId parameter given")
+		return
 	}
 
 	request := &relationsv1.CancelFriendOfferRequest{
@@ -241,10 +253,6 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 }
 
 func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
-	type removeFriendOfferResponse struct {
-		Error string `json:"error,omitempty"`
-	}
-
 	myUrl, _ := url.Parse(r.RequestURI)
 	params, _ := url.ParseQuery(myUrl.RawQuery)
 
@@ -254,15 +262,8 @@ func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
 
 	friendId := params.Get("friendId")
 	if friendId == "" {
-		resp := removeFriendOfferResponse{Error: "no friendId given"}
-		respJson, err := json.Marshal(resp)
-		if err != nil {
-			slog.Error("[RemoveFriend] client error: " + err.Error())
-			utils.WriteError(w, "Internal error: "+err.Error())
-			return
-		}
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write(respJson)
+		utils.WriteError(w, "no friendId parameter given")
+		return
 	}
 
 	request := &relationsv1.RemoveFriendRequest{
@@ -306,7 +307,11 @@ func (c *RelationsClient) BlockUser(w http.ResponseWriter, r *http.Request) {
 	_, err = c.relationsAPi.BlockUser(r.Context(), request)
 	if err != nil {
 		slog.Error("[BlockUser] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		outputError := "Internal error"
+		if strings.Contains(err.Error(), storage.ErrUserAlreadyBlocked.Error()) {
+			outputError = storage.ErrUserAlreadyBlocked.Error()
+		}
+		utils.WriteError(w, outputError)
 		return
 	}
 
@@ -331,7 +336,7 @@ func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
 		respJson, err := json.Marshal(resp)
 		if err != nil {
 			slog.Error("[UnblockUser] client error: " + err.Error())
-			utils.WriteError(w, "Internal error: "+err.Error())
+			utils.WriteError(w, "Internal error")
 			return
 		}
 		w.WriteHeader(http.StatusBadRequest)
@@ -346,7 +351,11 @@ func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
 	_, err := c.relationsAPi.UnblockUser(r.Context(), request)
 	if err != nil {
 		slog.Error("[UnblockUser] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		outputError := "Internal error"
+		if strings.Contains(err.Error(), storage.ErrUserAlreadyUnblocked.Error()) {
+			outputError = storage.ErrUserAlreadyUnblocked.Error()
+		}
+		utils.WriteError(w, outputError)
 		return
 	}
 

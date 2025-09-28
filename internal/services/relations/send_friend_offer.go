@@ -20,6 +20,9 @@ func (r *RelationsService) SendFriendOffer(ctx context.Context, senderId string,
 	if relation.IsFriend {
 		return storage.ErrCantAddAlreadyFriend
 	}
+	if relation.IsIncoming {
+		return storage.ErrFriendOfferAlreadySent
+	}
 
 	err = r.relations.SendFriendOffer(ctx, senderId, recieverId)
 	if err != nil {
