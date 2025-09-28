@@ -212,7 +212,7 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 			utils.WriteError(w, "Internal error: "+err.Error())
 			return
 		}
-		w.WriteHeader(http.StatusCreated)
+		w.WriteHeader(http.StatusBadRequest)
 		w.Write(respJson)
 	}
 
@@ -238,6 +238,119 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(respJson)
+}
+
+func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
+	type removeFriendOfferResponse struct {
+		Error string `json:"error,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[RemoveFriend] senderId=" + senderId)
+
+	friendId := params.Get("friendId")
+	if friendId == "" {
+		resp := removeFriendOfferResponse{Error: "no friendId given"}
+		respJson, err := json.Marshal(resp)
+		if err != nil {
+			slog.Error("[RemoveFriend] client error: " + err.Error())
+			utils.WriteError(w, "Internal error: "+err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(respJson)
+	}
+
+	request := &relationsv1.RemoveFriendRequest{
+		ToRemoveId: friendId,
+		SenderId:   senderId,
+	}
+
+	_, err := c.relationsAPi.RemoveFriend(r.Context(), request)
+	if err != nil {
+		slog.Error("[RemoveFriend] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *RelationsClient) BlockUser(w http.ResponseWriter, r *http.Request) {
+	type blockUserRequest struct {
+		ProfileId string `json:"profileId"`
+	}
+
+	var req blockUserRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		slog.Error("[BlockUser] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[BlockUser] senderId=" + senderId)
+
+	request := &relationsv1.BlockUserRequest{
+		ToBlockId: req.ProfileId,
+		SenderId:  senderId,
+	}
+
+	_, err = c.relationsAPi.BlockUser(r.Context(), request)
+	if err != nil {
+		slog.Error("[BlockUser] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
+	type unblockUserResponse struct {
+		Error string `json:"error,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[UnblockUser] senderId=" + senderId)
+
+	profileId := params.Get("profileId")
+	if profileId == "" {
+		resp := unblockUserResponse{Error: "no profileId given"}
+		respJson, err := json.Marshal(resp)
+		if err != nil {
+			slog.Error("[UnblockUser] client error: " + err.Error())
+			utils.WriteError(w, "Internal error: "+err.Error())
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(respJson)
+	}
+
+	request := &relationsv1.UnblockUserRequest{
+		ToUnblockId: profileId,
+		SenderId:    senderId,
+	}
+
+	_, err := c.relationsAPi.UnblockUser(r.Context(), request)
+	if err != nil {
+		slog.Error("[UnblockUser] client error: " + err.Error())
+		utils.WriteError(w, "Internal error: "+err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func NewRelationsClient(addr string, timeout time.Duration, retriesCount int) (*RelationsClient, error) {

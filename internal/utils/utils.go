@@ -20,7 +20,7 @@ type ErrorWrapper struct {
 
 func WriteError(w http.ResponseWriter, err string) {
 	errWrapper := ErrorWrapper{Err: err}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusBadRequest)
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json, _ := json.Marshal(errWrapper)
 	w.Write(json)

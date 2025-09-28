@@ -34,9 +34,12 @@ func main() {
 	relationsClient, _ := NewRelationsClient(common.GrpcRelationsAddress(cfg), cfg.Clients.Relations.Timeout, cfg.Clients.Relations.RetriesCount)
 	router.HandleFunc("/api/relation", relationsClient.CreateNewRelation).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/friends/{id}", relationsClient.SendFriendOffer).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/friends/{id}", relationsClient.RemoveFriend).Methods(http.MethodDelete, http.MethodOptions)
 	router.HandleFunc("/api/outcoming/{id}/delete", relationsClient.CancelFriendOffer).Methods(http.MethodDelete, http.MethodOptions)
 	router.HandleFunc("/api/incoming/{id}/accept", relationsClient.AcceptFriendOffer).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/incoming/{id}/decline", relationsClient.DeclineFriendOffer).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/blocks/{id}", relationsClient.BlockUser).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/blocks/{id}", relationsClient.UnblockUser).Methods(http.MethodDelete, http.MethodOptions)
 
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
