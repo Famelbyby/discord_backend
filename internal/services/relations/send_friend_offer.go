@@ -17,6 +17,9 @@ func (r *RelationsService) SendFriendOffer(ctx context.Context, senderId string,
 	if relation.IsBlocked {
 		return storage.ErrCantAddBlockedUser
 	}
+	if relation.IsFriend {
+		return storage.ErrCantAddAlreadyFriend
+	}
 
 	err = r.relations.SendFriendOffer(ctx, senderId, recieverId)
 	if err != nil {

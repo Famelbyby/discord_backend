@@ -23,8 +23,7 @@ type RelationsClient struct {
 
 func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Request) {
 	type createNewRelationRequest struct {
-		UserId string `json:"id,omitempty"`
-		Error  string `json:"error,omitempty"`
+		UserId string `json:"id"`
 	}
 
 	var req createNewRelationRequest
@@ -116,12 +115,12 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 	}
 
 	vars := mux.Vars(r)
-	senderId := vars["id"]
-	slog.Info("[AcceptFriendOffer] senderId=" + senderId)
+	recieverId := vars["id"]
+	slog.Info("[AcceptFriendOffer] recieverId=" + recieverId)
 
 	request := &relationsv1.AcceptFriendOfferRequest{
-		RecieverId: req.FriendId,
-		SenderId:   senderId,
+		RecieverId: recieverId,
+		SenderId:   req.FriendId,
 	}
 
 	_, err = c.relationsAPi.AcceptFriendOffer(r.Context(), request)
@@ -131,7 +130,7 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	resp := acceptFriendOfferResponse{UserId: senderId}
+	resp := acceptFriendOfferResponse{UserId: recieverId}
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[AcceptFriendOffer] client error: " + err.Error())
@@ -163,12 +162,12 @@ func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Requ
 	}
 
 	vars := mux.Vars(r)
-	senderId := vars["id"]
-	slog.Info("[DeclineFriendOffer] senderId=" + senderId)
+	recieverId := vars["id"]
+	slog.Info("[DeclineFriendOffer] recieverId=" + recieverId)
 
 	request := &relationsv1.DeclineFriendOfferRequest{
-		RecieverId: req.FriendId,
-		SenderId:   senderId,
+		RecieverId: recieverId,
+		SenderId:   req.FriendId,
 	}
 
 	_, err = c.relationsAPi.DeclineFriendOffer(r.Context(), request)
@@ -178,7 +177,7 @@ func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	resp := declineFriendOfferResponse{UserId: senderId}
+	resp := declineFriendOfferResponse{UserId: recieverId}
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
