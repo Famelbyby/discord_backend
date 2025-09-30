@@ -362,6 +362,67 @@ func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
+	type getRelationResponse struct {
+		Error       string `json:"error,omitempty"`
+		IsFriend    bool   `json:"isFriend,omitempty"`
+		IsIncoming  bool   `json:"isIncoming,omitempty"`
+		IsOutcoming bool   `json:"isOutcoming,omitempty"`
+		IsBlocked   bool   `json:"isBlocked,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[GetRelation] senderId=" + senderId)
+
+	profileId := params.Get("profileId")
+	if profileId == "" {
+		resp := getRelationResponse{Error: "no profileId given"}
+		respJson, err := json.Marshal(resp)
+		if err != nil {
+			slog.Error("[GetRelation] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write(respJson)
+	}
+
+	request := &relationsv1.GetUserRelationRequest{
+		SenderId: senderId,
+		TargetId: profileId,
+	}
+
+	result, err := c.relationsAPi.GetUserRelation(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetRelation] client error: " + err.Error())
+		outputError := "Internal error"
+		if strings.Contains(err.Error(), storage.ErrUserAlreadyUnblocked.Error()) {
+			outputError = storage.ErrUserAlreadyUnblocked.Error()
+		}
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	resp := getRelationResponse{IsFriend: result.IsFriend,
+		IsIncoming:  result.IsIncoming,
+		IsOutcoming: result.IsOutgoing,
+		IsBlocked:   result.IsBlocked,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetRelation] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
 func NewRelationsClient(addr string, timeout time.Duration, retriesCount int) (*RelationsClient, error) {
 	retryOptions := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),

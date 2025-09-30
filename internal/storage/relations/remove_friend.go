@@ -6,6 +6,7 @@ import (
 	"discord_backend/internal/utils"
 	"errors"
 	"log/slog"
+	"slices"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -28,6 +29,9 @@ func (s *RelationsStorage) RemoveFriend(ctx context.Context, senderId string, to
 		return errors.New("[RemoveFriend] storage error: " + err.Error())
 	}
 
+	if !slices.Contains(senderRelation.FriendsIds, toRemoveId) {
+		return storage.ErrUserIsntFriend
+	}
 	senderRelation.FriendsIds = utils.RemoveByValue(senderRelation.FriendsIds, toRemoveId)
 
 	update := bson.M{
