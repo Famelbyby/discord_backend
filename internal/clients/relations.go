@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+const recordsOnPage = 30
 
 type RelationsClient struct {
 	relationsAPi relationsv1.RelationsClient
@@ -400,9 +403,6 @@ func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		slog.Error("[GetRelation] client error: " + err.Error())
 		outputError := "Internal error"
-		if strings.Contains(err.Error(), storage.ErrUserAlreadyUnblocked.Error()) {
-			outputError = storage.ErrUserAlreadyUnblocked.Error()
-		}
 		utils.WriteError(w, outputError)
 		return
 	}
@@ -415,6 +415,258 @@ func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[GetRelation] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) {
+	type getAllFriendsResponse struct {
+		Error   string   `json:"error,omitempty"`
+		Friends []string `json:"friends,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[GetAllFriends] senderId=" + senderId)
+
+	var page int64
+	page = 1
+	var limit int64
+	limit = recordsOnPage
+	var err error
+	if params.Has("page") {
+		page, err = strconv.ParseInt(params.Get("page"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllFriends] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+	if params.Has("limit") {
+		limit, err = strconv.ParseInt(params.Get("limit"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllFriends] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+
+	request := &relationsv1.GetAllFriendsRequest{
+		SenderId: senderId,
+		Page:     page,
+		Limit:    limit,
+	}
+
+	result, err := c.relationsAPi.GetAllFriends(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetAllFriends] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	resp := getAllFriendsResponse{
+		Friends: result.Friends,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetAllFriends] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Request) {
+	type getAllIncomingssResponse struct {
+		Error     string   `json:"error,omitempty"`
+		Incomings []string `json:"incomings,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[GetAllIncomingOffers] senderId=" + senderId)
+
+	var page int64
+	page = 1
+	var limit int64
+	limit = recordsOnPage
+	var err error
+	if params.Has("page") {
+		page, err = strconv.ParseInt(params.Get("page"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllIncomingOffers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+	if params.Has("limit") {
+		limit, err = strconv.ParseInt(params.Get("limit"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllIncomingOffers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+
+	request := &relationsv1.GetAllIncomingOffersRequest{
+		SenderId: senderId,
+		Page:     page,
+		Limit:    limit,
+	}
+
+	result, err := c.relationsAPi.GetAllIncomingOffers(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetAllIncomingOffers] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	resp := getAllIncomingssResponse{
+		Incomings: result.Ids,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetAllIncomingOffers] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Request) {
+	type getAllOutgoingsResponse struct {
+		Error      string   `json:"error,omitempty"`
+		Outcomings []string `json:"outcomings,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[GetAllOutgoingOffers] senderId=" + senderId)
+
+	var page int64
+	page = 1
+	var limit int64
+	limit = recordsOnPage
+	var err error
+	if params.Has("page") {
+		page, err = strconv.ParseInt(params.Get("page"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllOutgoingOffers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+	if params.Has("limit") {
+		limit, err = strconv.ParseInt(params.Get("limit"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllOutgoingOffers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+
+	request := &relationsv1.GetAllOutgoingOffersRequest{
+		SenderId: senderId,
+		Page:     page,
+		Limit:    limit,
+	}
+
+	result, err := c.relationsAPi.GetAllOutgoingOffers(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetAllOutgoingOffers] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	resp := getAllOutgoingsResponse{
+		Outcomings: result.Ids,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetAllOutgoingOffers] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
+func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Request) {
+	type getAlBlocksResponse struct {
+		Error  string   `json:"error,omitempty"`
+		Blocks []string `json:"blocks,omitempty"`
+	}
+
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+
+	vars := mux.Vars(r)
+	senderId := vars["id"]
+	slog.Info("[GetAllBlockedUsers] senderId=" + senderId)
+
+	var page int64
+	page = 1
+	var limit int64
+	limit = recordsOnPage
+	var err error
+	if params.Has("page") {
+		page, err = strconv.ParseInt(params.Get("page"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllBlockedUsers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+	if params.Has("limit") {
+		limit, err = strconv.ParseInt(params.Get("limit"), 10, 64)
+		if err != nil {
+			slog.Error("[GetAllBlockedUsers] client error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+	}
+
+	request := &relationsv1.GetAllBlockedUsersRequest{
+		SenderId: senderId,
+		Page:     page,
+		Limit:    limit,
+	}
+
+	result, err := c.relationsAPi.GetAllBlockedUsers(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetAllBlockedUsers] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	resp := getAlBlocksResponse{
+		Blocks: result.Ids,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetAllBlockedUsers] client error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}

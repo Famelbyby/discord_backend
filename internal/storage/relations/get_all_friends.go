@@ -27,5 +27,8 @@ func (s *RelationsStorage) GetAllFriends(ctx context.Context, senderId string, p
 		return nil, errors.New("[GetAllFriends] storage error: " + err.Error())
 	}
 
-	return senderRelation.FriendsIds[(page-1)*recordsOnPage : (page-1)*recordsOnPage+limit], nil
+	if (page-1)*limit > int64(len(senderRelation.FriendsIds)) {
+		return []string{}, nil
+	}
+	return senderRelation.FriendsIds[(page-1)*limit : min((page)*limit, int64(len(senderRelation.FriendsIds)))], nil
 }

@@ -27,5 +27,8 @@ func (s *RelationsStorage) GetAllIncomingOffers(ctx context.Context, senderId st
 		return nil, errors.New("[GetAllIncomingOffers] storage error: " + err.Error())
 	}
 
-	return senderRelation.IncomingIds[(page-1)*recordsOnPage : (page-1)*recordsOnPage+limit], nil
+	if (page-1)*limit > int64(len(senderRelation.IncomingIds)) {
+		return []string{}, nil
+	}
+	return senderRelation.IncomingIds[(page-1)*limit : min((page)*limit, int64(len(senderRelation.IncomingIds)))], nil
 }

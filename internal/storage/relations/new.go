@@ -6,8 +6,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-const recordsOnPage = 30
-
 type RelationsStorage struct {
 	collection *mongo.Collection
 	log        *slog.Logger

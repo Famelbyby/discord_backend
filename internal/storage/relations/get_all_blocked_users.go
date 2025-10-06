@@ -27,5 +27,8 @@ func (s *RelationsStorage) GetAllBlockedUsers(ctx context.Context, senderId stri
 		return nil, errors.New("[GetAllBlockedUsers] storage error: " + err.Error())
 	}
 
-	return senderRelation.BlockedIds, nil
+	if (page-1)*limit > int64(len(senderRelation.BlockedIds)) {
+		return []string{}, nil
+	}
+	return senderRelation.BlockedIds[(page-1)*limit : min((page)*limit, int64(len(senderRelation.BlockedIds)))], nil
 }

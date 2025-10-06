@@ -40,6 +40,11 @@ func main() {
 	router.HandleFunc("/api/incoming/{id}/decline", relationsClient.DeclineFriendOffer).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/blocks/{id}", relationsClient.BlockUser).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/blocks/{id}", relationsClient.UnblockUser).Methods(http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/api/relation/{id}", relationsClient.GetRelation).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/friends/{id}", relationsClient.GetAllFriends).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/incoming/{id}", relationsClient.GetAllIncomingOffers).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/outcoming/{id}", relationsClient.GetAllOutgoingOffers).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/blocks/{id}", relationsClient.GetAllBlockedUsers).Methods(http.MethodGet, http.MethodOptions)
 
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
