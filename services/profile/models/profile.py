@@ -1,7 +1,7 @@
 from profile.models.base import Base
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime
-from sqlalchemy import func, BigInteger
+from sqlalchemy import BigInteger
 import uuid
 
 

@@ -19,7 +19,7 @@ class DataBase:
     async_db_url - ссылка для асинхронного подключения к бд
     """
 
-    def __init__(self, db_url: str, async_db_url: str):
+    def __init__(self, async_db_url: str):
 
         self.async_engine = create_async_engine(async_db_url)
 
@@ -30,18 +30,9 @@ class DataBase:
             expire_on_commit=False,
         )
 
-        self.engine = create_engine(db_url)
-
-        self.session_factory = sessionmaker(
-            bind=self.engine,
-            autoflush=False,
-            autocommit=False,
-            expire_on_commit=False,
-        )
-
     async def get_async_session(self):
         async with self.async_session_factory() as session:
             yield session
 
 
-db = DataBase(config.db_url, config.async_db_url)
+db = DataBase(config.async_db_url)
