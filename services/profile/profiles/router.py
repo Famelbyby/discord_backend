@@ -8,8 +8,8 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated, Optional
-from profile.core.db import db
-from profile.models.profile import ProfileORM
+from core.db import db
+from models.profile import ProfileORM
 from sqlalchemy import select
 
 from sqlalchemy.exc import IntegrityError

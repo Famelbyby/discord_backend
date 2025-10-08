@@ -14,6 +14,14 @@ services:
       - grafana-storage:/var/lib/grafana
     entrypoint: "/bin/sh -c /entry_point.sh"
 
+  profile:
+    build: services/profile
+    command: >
+      sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./app:/app/app
   postgres:
     image: postgres:latest
     container_name: postgres_container
@@ -26,11 +34,6 @@ services:
       - "5430:5432"
       # volumes:
       # - ./pgdata:/var/lib/postgresql/data/pgdata
-
-networks:
-  default:
-    name: discordnet
-    external: true
 
 volumes:
   db-data:

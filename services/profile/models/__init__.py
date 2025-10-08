@@ -1,5 +1,5 @@
 __all__ = ("Base", "ProfileORM")
 
 
-from profile.models.base import Base
-from profile.models.profile import ProfileORM
+from models.base import Base
+from models.profile import ProfileORM
