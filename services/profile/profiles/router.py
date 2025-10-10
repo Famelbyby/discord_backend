@@ -41,7 +41,7 @@ async def save_profile(
     mail: Annotated[EmailStr, Field(max_length=50), Body()],
     username: Annotated[str, Field(max_length=25, min_length=4), Body()],
     avatar: Annotated[
-        UploadFile | str | None,
+        UploadFile | str,
         Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
     ],
     status: Annotated[
@@ -104,9 +104,7 @@ async def get_profile_pagination(
     result = await db.execute(statement)
     profile = result.scalars().all()
     if not profile:
-        raise HTTPException(
-            status_code=st.HTTP_404_NOT_FOUND, detail="Профиль не найден"
-        )
+        return {"profie": []}
     return {"profie": profile}
 
 
@@ -125,7 +123,7 @@ async def edit_profile(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
     profile: Annotated[ProfileORM, Depends(check_if_profile_exists)],
     avatar: Annotated[
-        Optional[UploadFile | str | None],
+        Optional[UploadFile | str],
         Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
     ] = "https://elitclub.kz/upload/images/11333_134586_14.jpeg",
     username: Annotated[
