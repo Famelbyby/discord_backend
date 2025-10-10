@@ -41,7 +41,7 @@ async def save_profile(
     mail: Annotated[EmailStr, Field(max_length=50), Body()],
     username: Annotated[str, Field(max_length=25, min_length=4), Body()],
     avatar: Annotated[
-        UploadFile | str,
+        UploadFile | str | None,
         Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
     ],
     status: Annotated[
@@ -125,7 +125,7 @@ async def edit_profile(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
     profile: Annotated[ProfileORM, Depends(check_if_profile_exists)],
     avatar: Annotated[
-        Optional[UploadFile | str],
+        Optional[UploadFile | str | None],
         Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
     ] = "https://elitclub.kz/upload/images/11333_134586_14.jpeg",
     username: Annotated[
