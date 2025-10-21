@@ -2,14 +2,11 @@ package relations
 
 import (
 	"context"
-	"discord_backend/internal/storage"
 	"discord_backend/internal/utils"
 	"errors"
 	"log/slog"
-	"slices"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func (s *RelationsStorage) RemoveFriend(ctx context.Context, senderId string, toRemoveId string) error {
@@ -17,20 +14,10 @@ func (s *RelationsStorage) RemoveFriend(ctx context.Context, senderId string, to
 
 	filter := bson.M{"user_id": senderId}
 
-	var senderRelation dtoRelations
-
-	err := s.collection.FindOne(ctx, filter).Decode(&senderRelation)
+	senderRelation, err := s.GetRelationRecord(ctx, senderId)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return storage.ErrUserNotFound
-		}
-
 		slog.Error("[RemoveFriend] storage error: " + err.Error())
 		return errors.New("[RemoveFriend] storage error: " + err.Error())
-	}
-
-	if !slices.Contains(senderRelation.FriendsIds, toRemoveId) {
-		return storage.ErrUserIsntFriend
 	}
 	senderRelation.FriendsIds = utils.RemoveByValue(senderRelation.FriendsIds, toRemoveId)
 
@@ -45,14 +32,8 @@ func (s *RelationsStorage) RemoveFriend(ctx context.Context, senderId string, to
 
 	filter = bson.M{"user_id": toRemoveId}
 
-	var recieverRelation dtoRelations
-
-	err = s.collection.FindOne(ctx, filter).Decode(&recieverRelation)
+	recieverRelation, err := s.GetRelationRecord(ctx, toRemoveId)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return storage.ErrUserNotFound
-		}
-
 		slog.Error("[RemoveFriend] storage error: " + err.Error())
 		return errors.New("[RemoveFriend] storage error: " + err.Error())
 	}

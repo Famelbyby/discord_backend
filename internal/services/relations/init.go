@@ -13,6 +13,7 @@ type RelationsService struct {
 
 type Relations interface {
 	CreateNewRelation(ctx context.Context, userId string) error
+	GetRelationRecord(ctx context.Context, userId string) (models.RelationRecord, error)
 	SendFriendOffer(ctx context.Context, senderId, recievedId string) error
 	CancelFriendOffer(ctx context.Context, senderId, recieverId string) error
 	AcceptFriendRequest(ctx context.Context, senderId, recievedId string) error

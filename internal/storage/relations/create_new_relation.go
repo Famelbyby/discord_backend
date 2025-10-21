@@ -2,6 +2,7 @@ package relations
 
 import (
 	"context"
+	"discord_backend/internal/domain/models"
 	"errors"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -10,7 +11,7 @@ import (
 func (s *RelationsStorage) CreateNewRelation(ctx context.Context, userId string) error {
 	s.log.Info("[CreateNewRelation] storage started")
 
-	senderRelation := dtoRelations{
+	senderRelation := models.RelationRecord{
 		ID:          primitive.NewObjectID(),
 		UserId:      userId,
 		FriendsIds:  []string{},

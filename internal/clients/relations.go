@@ -34,6 +34,7 @@ func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Reque
 	var req createNewRelationRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+
 		slog.Error("[CreateNewRelation] client error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
@@ -45,6 +46,10 @@ func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Reque
 
 	_, err = c.relationsAPi.CreateNewRelation(r.Context(), request)
 	if err != nil {
+		if strings.Contains(err.Error(), storage.ErrRecordExists.Error()) {
+			utils.WriteError(w, "Record already exists")
+			return
+		}
 		slog.Error("[CreateNewRelation] client error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
@@ -148,6 +153,9 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 		if strings.Contains(err.Error(), storage.ErrCantAddAlreadyFriend.Error()) {
 			outputError = storage.ErrCantAddAlreadyFriend.Error()
 		}
+		if strings.Contains(err.Error(), storage.ErrNoOutgoingOffer.Error()) {
+			outputError = storage.ErrNoOutgoingOffer.Error()
+		}
 		utils.WriteError(w, outputError)
 		return
 	}
@@ -238,8 +246,12 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 
 	_, err := c.relationsAPi.CancelFriendOffer(r.Context(), request)
 	if err != nil {
+		if strings.Contains(err.Error(), storage.ErrNoOutgoingOffer.Error()) {
+			utils.WriteError(w, storage.ErrNoOutgoingOffer.Error())
+			return
+		}
 		slog.Error("[CancelFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		utils.WriteError(w, "Internal error")
 		return
 	}
 

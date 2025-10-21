@@ -11,4 +11,6 @@ var (
 	ErrUserAlreadyUnblocked   = errors.New("this user is already unblocked")
 	ErrFriendOfferAlreadySent = errors.New("friendship offer  to this user is already sent")
 	ErrUserIsntFriend         = errors.New("the user with given friendId is not your friend")
+	ErrRecordExists           = errors.New("record already exists")
+	ErrNoOutgoingOffer        = errors.New("the outgoing offer doesn't exist")
 )

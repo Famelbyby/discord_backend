@@ -2,33 +2,25 @@ package relations
 
 import (
 	"context"
-	"discord_backend/internal/storage"
 	"discord_backend/internal/utils"
 	"errors"
 	"log/slog"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
-	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 func (s *RelationsStorage) CancelFriendOffer(ctx context.Context, senderId string, recieverId string) error {
 	s.log.Info("[CancelFriendOffer] storage started, sender id=" + senderId + " recieverId=" + recieverId)
 
-	filter := bson.M{"user_id": senderId}
-
-	var senderRelation dtoRelations
-
-	err := s.collection.FindOne(ctx, filter).Decode(&senderRelation)
+	senderRelation, err := s.GetRelationRecord(ctx, senderId)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return storage.ErrUserNotFound
-		}
-
 		slog.Error("[CancelFriendOffer] storage error: " + err.Error())
 		return errors.New("[CancelFriendOffer] storage error: " + err.Error())
 	}
+
 	senderRelation.OutgoingIds = utils.RemoveByValue(senderRelation.OutgoingIds, recieverId)
 
+	filter := bson.M{"user_id": senderId}
 	update := bson.M{
 		"$set": senderRelation,
 	}
@@ -40,14 +32,8 @@ func (s *RelationsStorage) CancelFriendOffer(ctx context.Context, senderId strin
 
 	filter = bson.M{"user_id": recieverId}
 
-	var recieverRelation dtoRelations
-
-	err = s.collection.FindOne(ctx, filter).Decode(&recieverRelation)
+	recieverRelation, err := s.GetRelationRecord(ctx, recieverId)
 	if err != nil {
-		if errors.Is(err, mongo.ErrNoDocuments) {
-			return storage.ErrUserNotFound
-		}
-
 		slog.Error("[CancelFriendOffer] storage error: " + err.Error())
 		return errors.New("[CancelFriendOffer] storage error: " + err.Error())
 	}
