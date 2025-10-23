@@ -153,6 +153,9 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 		if strings.Contains(err.Error(), storage.ErrCantAddAlreadyFriend.Error()) {
 			outputError = storage.ErrCantAddAlreadyFriend.Error()
 		}
+		if strings.Contains(err.Error(), storage.ErrUserNotFound.Error()) {
+			outputError = storage.ErrUserNotFound.Error()
+		}
 		if strings.Contains(err.Error(), storage.ErrNoOutgoingOffer.Error()) {
 			outputError = storage.ErrNoOutgoingOffer.Error()
 		}
@@ -203,7 +206,11 @@ func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Requ
 	_, err = c.relationsAPi.DeclineFriendOffer(r.Context(), request)
 	if err != nil {
 		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		if strings.Contains(err.Error(), storage.ErrNoOutgoingOffer.Error()) {
+			utils.WriteError(w, storage.ErrNoOutgoingOffer.Error())
+			return
+		}
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
@@ -211,7 +218,7 @@ func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Requ
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[DeclineFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
@@ -259,7 +266,7 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[CancelFriendOffer] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
@@ -289,7 +296,11 @@ func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
 	_, err := c.relationsAPi.RemoveFriend(r.Context(), request)
 	if err != nil {
 		slog.Error("[RemoveFriend] client error: " + err.Error())
-		utils.WriteError(w, "Internal error: "+err.Error())
+		if strings.Contains(err.Error(), storage.ErrUserIsntFriend.Error()) {
+			utils.WriteError(w, storage.ErrUserIsntFriend.Error())
+			return
+		}
+		utils.WriteError(w, "Internal error")
 		return
 	}
 
