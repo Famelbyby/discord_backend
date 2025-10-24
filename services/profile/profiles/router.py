@@ -41,9 +41,9 @@ async def save_profile(
     mail: Annotated[EmailStr, Field(max_length=50), Body()],
     username: Annotated[str, Field(max_length=25, min_length=4), Body()],
     avatar: Annotated[
-        UploadFile | str,
+        UploadFile | str | None,
         Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
-    ],
+    ] = None,
     status: Annotated[
         Optional[str],
         Field(max_length=150, default=None),
@@ -88,7 +88,7 @@ async def get_profile(
 @profile_router.get("/", status_code=st.HTTP_200_OK)
 async def get_profile_pagination(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
-    name: str,
+    name: str = "",
     limit: int = 30,
     page: int = 1,
 ):
@@ -97,7 +97,7 @@ async def get_profile_pagination(
 
     statement = (
         select(ProfileORM)
-        .where(ProfileORM.username == name)
+        .where(ProfileORM.username.startswith(name))
         .offset(offset)
         .limit(limit)
     )
