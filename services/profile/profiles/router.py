@@ -48,7 +48,7 @@ async def save_profile(
         Optional[str],
         Field(max_length=150, default=None),
         Body(),
-    ] = None,
+    ] = "",
 ):
 
     try:
@@ -82,7 +82,7 @@ async def get_profile(
     db: AsyncSession = Depends(db.get_async_session),
 ):
 
-    return {"profie": profile}
+    return {"profile": profile}
 
 
 @profile_router.get("/", status_code=st.HTTP_200_OK)
@@ -104,8 +104,8 @@ async def get_profile_pagination(
     result = await db.execute(statement)
     profile = result.scalars().all()
     if not profile:
-        return {"profie": []}
-    return {"profie": profile}
+        return {"profiles": []}
+    return {"profiles": profile}
 
 
 @profile_router.delete("/{id}", status_code=st.HTTP_204_NO_CONTENT)
