@@ -89,6 +89,7 @@ async def get_profile(
 async def get_profile_pagination(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
     name: str = "",
+    email: str = "",
     limit: int = 30,
     page: int = 1,
 ):
@@ -98,6 +99,7 @@ async def get_profile_pagination(
     statement = (
         select(ProfileORM)
         .where(ProfileORM.username.startswith(name))
+        .where(ProfileORM.mail.startswith(email))
         .offset(offset)
         .limit(limit)
     )
