@@ -29,11 +29,10 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      # PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5430:5432"
-      # volumes:
-      # - ./pgdata:/var/lib/postgresql/data/pgdata
+    volumes:
+      - profiles_data:/var/lib/postgresql
 
 volumes:
   db-data:
@@ -42,6 +41,7 @@ volumes:
       type: none
       o: bind
       device: /IO/loki_data
+  profiles_data:
   grafana-storage:
     driver: local
     driver_opts:
