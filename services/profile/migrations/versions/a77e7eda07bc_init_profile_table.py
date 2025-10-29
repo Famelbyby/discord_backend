@@ -26,7 +26,7 @@ def upgrade() -> None:
     sa.Column('mail', sa.String(), nullable=False),
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('created_at', sa.BigInteger(), nullable=False),
-    sa.Column('avatar', sa.String(), nullable=False),
+    sa.Column('avatar_url', sa.String(), nullable=False),
     sa.Column('short_link', sa.String(), nullable=False),
     sa.Column('status', sa.String(), nullable=False),
     sa.PrimaryKeyConstraint('id'),

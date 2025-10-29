@@ -1,18 +1,18 @@
 services:
-  logger_host:
-    container_name: $COMPOSE_PROJECT_NAME
-    image: $COMPOSE_PROJECT_NAME:1.0
-    build:
-      dockerfile: Dockerfile
-      context: $CURRENTPATH
-    ports:
-      - "12345:12345"
-      - "3100:3100"
-      - "3000:3000"
-    volumes:
-      - db-data:/loki
-      - grafana-storage:/var/lib/grafana
-    entrypoint: "/bin/sh -c /entry_point.sh"
+  # logger_host:
+  #   container_name: $COMPOSE_PROJECT_NAME
+  #   image: $COMPOSE_PROJECT_NAME:1.0
+  #   build:
+  #     dockerfile: Dockerfile
+  #     context: $CURRENTPATH
+  #   ports:
+  #     - "12345:12345"
+  #     - "3100:3100"
+  #     - "3000:3000"
+  #   volumes:
+  #     - db-data:/loki
+  #     - grafana-storage:/var/lib/grafana
+  #   entrypoint: "/bin/sh -c /entry_point.sh"
 
   profile:
     build: services/profile
