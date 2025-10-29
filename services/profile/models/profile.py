@@ -17,7 +17,7 @@ class ProfileORM(Base):
     created_at: Mapped[int] = mapped_column(
         BigInteger, default=lambda: int(datetime.now().timestamp() * 1000)
     )
-    avatar: Mapped[str] = mapped_column()
+    avatar_url: Mapped[str] = mapped_column()
     short_link: Mapped[str] = mapped_column(
         default=lambda: str(uuid.uuid4())[:9], unique=True
     )

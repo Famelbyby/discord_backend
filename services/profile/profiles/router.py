@@ -55,11 +55,11 @@ async def save_profile(
         profile_orm = ProfileORM(
             mail=mail,
             username=username,
-            avatar="https://elitclub.kz/upload/images/11333_134586_14.jpeg",
+            avatar_url="https://elitclub.kz/upload/images/11333_134586_14.jpeg",
             status=status,
         )
 
-        print(profile_orm.avatar)
+        print(profile_orm.avatar_url)
         db.add(profile_orm)
         await db.commit()
         return {"profile": profile_orm}
@@ -140,7 +140,7 @@ async def edit_profile(
         profile.status = status
     if username:
         profile.username = username
-    profile.avatar = avatar
+    profile.avatar_url = avatar
     await db.commit()
     await db.refresh(profile)
 
