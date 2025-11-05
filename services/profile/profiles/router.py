@@ -11,7 +11,7 @@ from typing import Annotated, Optional
 from core.db import db
 from models.profile import ProfileORM
 from sqlalchemy import select
-
+from profiles.minio_adapter import minio_adapter
 from sqlalchemy.exc import IntegrityError
 from pydantic import Field, EmailStr
 
@@ -42,7 +42,7 @@ async def save_profile(
     username: Annotated[str, Field(max_length=25, min_length=4), Body()],
     avatar: Annotated[
         UploadFile | str | None,
-        Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
+        Field(default=None),
     ] = None,
     status: Annotated[
         Optional[str],
@@ -52,21 +52,25 @@ async def save_profile(
 ):
 
     try:
+        if not avatar:
+            avatar = "https://elitclub.kz/upload/images/11333_134586_14.jpeg"
+        else:
+            avatar = await minio_adapter.upload_file(avatar)
+
         profile_orm = ProfileORM(
             mail=mail,
             username=username,
-            avatar_url="https://elitclub.kz/upload/images/11333_134586_14.jpeg",
+            avatar_url=avatar,
             status=status,
         )
 
-        print(profile_orm.avatar_url)
         db.add(profile_orm)
         await db.commit()
         return {"profile": profile_orm}
     except IntegrityError as e:
         raise HTTPException(
             status_code=st.HTTP_400_BAD_REQUEST,
-            detail="Такой mail уже существует",
+            detail=f"Такой mail уже существует",
         )
 
     except Exception as e:
@@ -125,9 +129,9 @@ async def edit_profile(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
     profile: Annotated[ProfileORM, Depends(check_if_profile_exists)],
     avatar: Annotated[
-        Optional[UploadFile | str],
-        Field(default="https://elitclub.kz/upload/images/11333_134586_14.jpeg"),
-    ] = "https://elitclub.kz/upload/images/11333_134586_14.jpeg",
+        UploadFile | str | None,
+        Field(default=None),
+    ] = None,
     username: Annotated[
         Optional[str], Field(max_length=25, min_length=4, default=None), Body()
     ] = None,
@@ -135,6 +139,9 @@ async def edit_profile(
         Optional[str], Field(max_length=150, default=None), Body()
     ] = None,
 ):
+
+    if avatar:
+        avatar = await minio_adapter.upload_file(avatar)
 
     if status:
         profile.status = status

@@ -1,3 +1,15 @@
+x-minio-common: &minio-common
+  image: minio/minio:latest
+  command: server --console-address ":9090" /mnt/data
+  ports:
+    - "9000:9000"
+    - "9090:9090"
+  healthcheck:
+    test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+    interval: 30s
+    timeout: 20s
+    retries: 3
+
 services:
   # logger_host:
   #   container_name: $COMPOSE_PROJECT_NAME
@@ -14,12 +26,23 @@ services:
   #     - grafana-storage:/var/lib/grafana
   #   entrypoint: "/bin/sh -c /entry_point.sh"
 
+
+  minio:
+    <<: *minio-common
+    hostname: minio
+    volumes:
+      - type: bind
+        source: /mnt/data/compose
+        target: /mnt/data
+      - type: bind
+        source: /etc/default/minio
+        target: /etc/config.env
   profile:
     build: services/profile
     command: >
       sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
     ports:
-      - "9000:9000"
+      - "9999:9999"
     volumes:
       - ./app:/app/app
   postgres:
@@ -35,6 +58,7 @@ services:
       - profiles_data:/var/lib/postgresql
 
 volumes:
+  minio_data:
   db-data:
     driver: local
     driver_opts:
