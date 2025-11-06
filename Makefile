@@ -6,7 +6,7 @@ auth:
 	go run cmd/auth/main.go
 
 migrate_init:
-	migrate -path=migrations/ -database "postgresql://yaro21:r2n7kzcp@localhost:54320/discord?sslmode=disable" -verbose up
+	migrate -path=migrations/ -database "postgresql://postgres:postgres@localhost:5430/discord?sslmode=disable" -verbose up
 	
 migrate_test:
 	go build ./cmd/migrator/main.go

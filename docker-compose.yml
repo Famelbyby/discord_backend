@@ -11,7 +11,7 @@ services:
     networks:
       - app-network
     depends_on:
-      - pg_db
+      - postgres
 
   relations_go:
     build:
@@ -56,7 +56,7 @@ services:
       - app-network
 
   postgres:
-    image: postgres:latest
+    image: postgres:16.4
     container_name: postgres_container
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -78,6 +78,10 @@ services:
       - "9000:9000"
     volumes:
       - ./app:/app/app
+    networks:
+      - app-network
+    depends_on:
+      - postgres
 volumes:
   pg_data:
   go_back:

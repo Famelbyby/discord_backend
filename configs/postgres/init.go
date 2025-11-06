@@ -20,9 +20,9 @@ const (
 )
 
 type postgresConfig struct {
-	Username string `env:"DB_USERNAME"`
-	Password string `env:"DB_PASSWORD"`
-	DBName   string `env:"DB_NAME"`
+	Username string `env:"POSTGRES_USER"`
+	Password string `env:"POSTGRES_PASSWORD"`
+	DBName   string `env:"POSTGRES_DB"`
 }
 
 func loadPGConfig() (postgresConfig, error) {
@@ -43,7 +43,7 @@ func loadPGConfig() (postgresConfig, error) {
 }
 
 func newPostgresConfigURL(p postgresConfig) string {
-	link := "postgres://%s:%s@pg_db/%s"
+	link := "postgres://%s:%s@postgres_container/%s"
 	return fmt.Sprintf(link,
 		url.QueryEscape(p.Username),
 		url.QueryEscape(p.Password),
