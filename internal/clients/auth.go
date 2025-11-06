@@ -1,13 +1,16 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	authv1 "discord_backend/gen/go/auth"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"time"
 
@@ -23,9 +26,50 @@ type AuthClient struct {
 }
 
 func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
+
 	var req registerRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	type Profile struct {
+		ID        string `json:"id"`
+		ShortLink string `json:"short_link"`
+		Mail      string `json:"mail"`
+		Username  string `json:"username"`
+		CreatedAt int64  `json:"created_at"`
+		AvatarURL string `json:"avatar_url"`
+		Status    string `json:"status"`
+	}
+	type ProfilesResponse struct {
+		Profiles []Profile `json:"profiles"`
+	}
+
+	resp, err := http.Get("http://127.0.0.1:9000/api/profile?email=" + req.Email)
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+	// Обязательно закрываем тело ответа после завершения работы функции.
+	defer resp.Body.Close()
+
+	// Читаем тело ответа.
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	// Создаем переменную для хранения результата разбора.
+	var profilesResponse ProfilesResponse
+
+	// Разбираем (анмаршалим) JSON из тела ответа в нашу структуру.
+	if err := json.Unmarshal(body, &profilesResponse); err != nil {
 		slog.Error("client Login error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
@@ -36,7 +80,7 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	}
 
-	loginResponse, err := c.authAPi.Login(context.Background(), request)
+	_, err = c.authAPi.Login(context.Background(), request)
 	if err != nil {
 		if errors.Is(err, status.Error(codes.InvalidArgument, "Invalid credentials")) {
 			utils.WriteError(w, "Invalid credentials")
@@ -48,7 +92,7 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseJson, err := json.Marshal(loginResponse)
+	responseJson, err := json.Marshal(profilesResponse.Profiles[0])
 	if err != nil {
 		slog.Error("client Login error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -60,13 +104,84 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 type registerRequest struct {
-	Email    string `json:"email"`
+	Email    string `json:"mail"`
 	Password string `json:"password"`
 }
 
 func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		http.Error(w, "Не удалось разобрать multipart-форму", http.StatusBadRequest)
+		return
+	}
+
+	// 2. Создание нового тела запроса.
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	// Копирование текстовых полей (mail, username, status).
+	for key, values := range r.MultipartForm.Value {
+		for _, value := range values {
+			if err := writer.WriteField(key, value); err != nil {
+				slog.Error("client Regsiter error: " + err.Error())
+				utils.WriteError(w, "Internal error")
+				return
+			}
+		}
+	}
+
+	// Копирование файла (avatar).
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+	defer file.Close()
+
+	part, err := writer.CreateFormFile("avatar", header.Filename)
+	if err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	if _, err := io.Copy(part, file); err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	// Завершаем формирование multipart-тела.
+	if err := writer.Close(); err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	// 3. Создание и отправка нового запроса.
+	targetURL := "http://127.0.0.1:9000/api/profile"
+	postReq, err := http.NewRequest("POST", targetURL, body)
+	if err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	// Устанавливаем Content-Type с правильной границей (boundary).
+	postReq.Header.Set("Content-Type", writer.FormDataContentType())
+
+	// Отправляем запрос.
+	client := &http.Client{}
+	resp, err := client.Do(postReq)
+	if err != nil {
+		slog.Error("client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+	defer resp.Body.Close()
+
 	var req registerRequest
-	err := json.NewDecoder(r.Body).Decode(&req)
+	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		slog.Error("client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -90,15 +205,25 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := json.Marshal(registerResponse)
+	_, err = json.Marshal(registerResponse)
 	if err != nil {
 		slog.Error("client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
-	w.Write(result)
+	// 4. (Опционально) Пересылка ответа от целевого сервера обратно клиенту.
+	// Копируем заголовки ответа.
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	// Устанавливаем статус-код ответа.
+	w.WriteHeader(resp.StatusCode)
+	// Копируем тело ответа.
+	io.Copy(w, resp.Body)
 }
 func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthClient, error) {
 	retryOptions := []grpcretry.CallOption{
