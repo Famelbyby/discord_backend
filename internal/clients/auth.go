@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	grpcretry "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
@@ -82,11 +83,10 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 
 	_, err = c.authAPi.Login(context.Background(), request)
 	if err != nil {
-		if errors.Is(err, status.Error(codes.InvalidArgument, "Invalid credentials")) {
+		if strings.Contains(err.Error(), "invalid credentials") {
 			utils.WriteError(w, "Invalid credentials")
 			return
 		}
-
 		slog.Error("client Login error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
@@ -131,24 +131,19 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 
 	// Копирование файла (avatar).
 	file, header, err := r.FormFile("avatar")
-	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
-		utils.WriteError(w, "Internal error")
-		return
-	}
-	defer file.Close()
-
-	part, err := writer.CreateFormFile("avatar", header.Filename)
-	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
-		utils.WriteError(w, "Internal error")
-		return
-	}
-
-	if _, err := io.Copy(part, file); err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
-		utils.WriteError(w, "Internal error")
-		return
+	if err == nil {
+		defer file.Close()
+		part, err := writer.CreateFormFile("avatar", header.Filename)
+		if err != nil {
+			slog.Error("client Regsiter error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
+		if _, err := io.Copy(part, file); err != nil {
+			slog.Error("client Regsiter error: " + err.Error())
+			utils.WriteError(w, "Internal error")
+			return
+		}
 	}
 
 	// Завершаем формирование multipart-тела.
