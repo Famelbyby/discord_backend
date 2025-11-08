@@ -6,7 +6,6 @@ import (
 	authv1 "discord_backend/gen/go/auth"
 	"discord_backend/internal/utils"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,7 +18,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
-	"google.golang.org/grpc/status"
 )
 
 type AuthClient struct {
@@ -104,8 +102,8 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 type registerRequest struct {
-	Email    string `json:"mail"`
-	Password string `json:"password"`
+	Email    string `form:"mail"`
+	Password string `form:"password"`
 }
 
 func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +155,7 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 	targetURL := "http://profile_py:9999/api/profile"
 	postReq, err := http.NewRequest("POST", targetURL, body)
 	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
+		slog.Error("http.NewRequest client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
@@ -169,18 +167,15 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 	client := &http.Client{}
 	resp, err := client.Do(postReq)
 	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
+		slog.Error(" client.Do client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
 	defer resp.Body.Close()
 
-	var req registerRequest
-	err = json.NewDecoder(r.Body).Decode(&req)
-	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
-		utils.WriteError(w, "Internal error")
-		return
+	req := registerRequest{
+		Email:    r.FormValue("mail"),
+		Password: r.FormValue("password"),
 	}
 
 	request := &authv1.RegisterRequest{
@@ -190,19 +185,19 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 
 	registerResponse, err := c.authAPi.Register(r.Context(), request)
 	if err != nil {
-		if errors.Is(err, status.Error(codes.AlreadyExists, "User already exists")) {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			utils.WriteError(w, "User already exists")
 			return
 		}
 
-		slog.Error("client Regsiter error: " + err.Error())
+		slog.Error(" c.authAPi.Register client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
 
 	_, err = json.Marshal(registerResponse)
 	if err != nil {
-		slog.Error("client Regsiter error: " + err.Error())
+		slog.Error(" json.Marshal client Regsiter error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
