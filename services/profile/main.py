@@ -9,10 +9,10 @@ app = FastAPI()
 app.include_router(main_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["127.0.0.8000", "127.0.0.3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["DELETE", "OPTIONS", "PUT", "POST", "GET"],
+    allow_headers=["Accept", "Accept-Language", "Content-Type", "Authorization", "Access-Control-Allow-Origin", "X-CSRF-Token"],
 )
 
 if __name__ == "__main__":
