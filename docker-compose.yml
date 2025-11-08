@@ -97,6 +97,7 @@ services:
 
   profile:
     build: services/profile
+    container_name: profile_py
     command: >
       sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
     ports:
