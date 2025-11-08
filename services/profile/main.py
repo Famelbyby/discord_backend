@@ -9,7 +9,7 @@ app = FastAPI()
 app.include_router(main_router)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["127.0.0.8000", "127.0.0.3000"],
+    allow_origins=["http://127.0.0.1:3000", "http://127.0.0.1:8000"],
     allow_credentials=True,
     allow_methods=["DELETE", "OPTIONS", "PUT", "POST", "GET"],
     allow_headers=["Accept", "Accept-Language", "Content-Type", "Authorization", "Access-Control-Allow-Origin", "X-CSRF-Token"],
