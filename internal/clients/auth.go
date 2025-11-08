@@ -48,7 +48,7 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		Profiles []Profile `json:"profiles"`
 	}
 
-	resp, err := http.Get("http://127.0.0.1:9000/api/profile?email=" + req.Email)
+	resp, err := http.Get("http://127.0.0.1:9999/api/profile?email=" + req.Email)
 	if err != nil {
 		slog.Error("client Login error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -159,7 +159,7 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Создание и отправка нового запроса.
-	targetURL := "http://127.0.0.1:9000/api/profile"
+	targetURL := "http://127.0.0.1:9999/api/profile"
 	postReq, err := http.NewRequest("POST", targetURL, body)
 	if err != nil {
 		slog.Error("client Regsiter error: " + err.Error())
