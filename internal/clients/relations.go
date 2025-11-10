@@ -6,6 +6,7 @@ import (
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -24,6 +25,63 @@ const recordsOnPage = 30
 
 type RelationsClient struct {
 	relationsAPi relationsv1.RelationsClient
+}
+
+type Profile struct {
+	ID        string `json:"id"`
+	ShortLink string `json:"short_link"`
+	Mail      string `json:"mail"`
+	Username  string `json:"username"`
+	CreatedAt int64  `json:"created_at"`
+	AvatarURL string `json:"avatar_url"`
+	Status    string `json:"status"`
+}
+
+func GetProfileById(id string) (Profile, error) {
+	type ProfileClientResponse struct {
+		Profile Profile `json:"profile"`
+	}
+
+	resp, err := http.Get("http://profile_py:9999/api/profile/" + id)
+
+	if err != nil {
+		slog.Error("client profile error: " + err.Error())
+		return Profile{}, err
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		return Profile{}, err
+	}
+
+	var profileResponse ProfileClientResponse
+
+	if err := json.Unmarshal(body, &profileResponse); err != nil {
+		slog.Error("client Login error: " + err.Error())
+
+		return Profile{}, err
+	}
+
+	return profileResponse.Profile, nil
+}
+
+func GetProfiles(profileIds []string) []Profile {
+	var profiles = []Profile{}
+
+	for _, id := range profileIds {
+		profile, err := GetProfileById(id)
+
+		if err != nil {
+			slog.Error("client profile error: " + err.Error())
+		} else {
+			profiles = append(profiles, profile)
+		}
+	}
+
+	return profiles
 }
 
 func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Request) {
@@ -448,8 +506,8 @@ func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
 
 func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) {
 	type getAllFriendsResponse struct {
-		Error   string   `json:"error,omitempty"`
-		Friends []string `json:"friends,omitempty"`
+		Error   string    `json:"error,omitempty"`
+		Friends []Profile `json:"friends,omitempty"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -495,9 +553,12 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	profiles := GetProfiles(result.Friends)
+
 	resp := getAllFriendsResponse{
-		Friends: result.Friends,
+		Friends: profiles,
 	}
+
 	respJson, err := json.Marshal(resp)
 	if err != nil {
 		slog.Error("[GetAllFriends] client error: " + err.Error())
@@ -511,8 +572,8 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 
 func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllIncomingssResponse struct {
-		Error     string   `json:"error,omitempty"`
-		Incomings []string `json:"incomings,omitempty"`
+		Error     string    `json:"error,omitempty"`
+		Incomings []Profile `json:"incomings,omitempty"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -558,8 +619,10 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	profiles := GetProfiles(result.Ids)
+
 	resp := getAllIncomingssResponse{
-		Incomings: result.Ids,
+		Incomings: profiles,
 	}
 	respJson, err := json.Marshal(resp)
 	if err != nil {
@@ -574,8 +637,8 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 
 func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllOutgoingsResponse struct {
-		Error      string   `json:"error,omitempty"`
-		Outcomings []string `json:"outcomings,omitempty"`
+		Error      string    `json:"error,omitempty"`
+		Outcomings []Profile `json:"outcomings,omitempty"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -621,8 +684,10 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	profiles := GetProfiles(result.Ids)
+
 	resp := getAllOutgoingsResponse{
-		Outcomings: result.Ids,
+		Outcomings: profiles,
 	}
 	respJson, err := json.Marshal(resp)
 	if err != nil {
@@ -637,8 +702,8 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 
 func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Request) {
 	type getAlBlocksResponse struct {
-		Error  string   `json:"error,omitempty"`
-		Blocks []string `json:"blocks,omitempty"`
+		Error  string    `json:"error,omitempty"`
+		Blocks []Profile `json:"blocks,omitempty"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -684,8 +749,10 @@ func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	profiles := GetProfiles(result.Ids)
+
 	resp := getAlBlocksResponse{
-		Blocks: result.Ids,
+		Blocks: profiles,
 	}
 	respJson, err := json.Marshal(resp)
 	if err != nil {
