@@ -24,9 +24,14 @@ type AuthClient struct {
 	authAPi authv1.AuthClient
 }
 
+type loginRequest struct {
+	Email    string `json:"mail"`
+	Password string `json:"password"`
+}
+
 func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 
-	var req registerRequest
+	var req loginRequest
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		slog.Error("client Login error: " + err.Error())
