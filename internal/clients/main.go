@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -19,6 +20,7 @@ var (
 	AppPortEnv      = "APP_PORT"
 	AppSecretEnv    = "APP_SECRET"
 	TokenCookieName = "token"
+	GOMAXPROCS      = 5
 	EmptyValue      = int64(-1)
 )
 
@@ -26,6 +28,7 @@ func main() {
 
 	cfg := config.MustLoad()
 	router := mux.NewRouter()
+	runtime.GOMAXPROCS(GOMAXPROCS)
 
 	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
 	router.HandleFunc("/api/register", authClient.Regsiter).Methods(http.MethodPost, http.MethodOptions)

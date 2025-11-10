@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -71,15 +72,30 @@ func GetProfileById(id string) (Profile, error) {
 func GetProfiles(profileIds []string) []Profile {
 	var profiles = []Profile{}
 
-	for _, id := range profileIds {
-		profile, err := GetProfileById(id)
+	wg := sync.WaitGroup{}
+	mutex := sync.Mutex{}
 
-		if err != nil {
-			slog.Error("client profile error: " + err.Error())
-		} else {
-			profiles = append(profiles, profile)
-		}
+	for _, id := range profileIds {
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			profile, err := GetProfileById(id)
+
+			if err != nil {
+				slog.Error("client profile error: " + err.Error())
+			} else {
+				mutex.Lock()
+
+				profiles = append(profiles, profile)
+
+				mutex.Unlock()
+			}
+		}()
 	}
+
+	wg.Wait()
 
 	return profiles
 }
