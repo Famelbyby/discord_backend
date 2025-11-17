@@ -11,6 +11,20 @@ x-minio-common: &minio-common
     retries: 3
 
 services:
+  web_nginx:
+    image: nginx:latest
+    container_name: web_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./configs/nginx:/etc/nginx/conf.d
+    networks:
+      - app-network
+    depends_on:
+      - clients_go
+      - profile
+
   auth_go:
     build:
       context: .
@@ -85,6 +99,7 @@ services:
   minio:
     <<: *minio-common
     hostname: minio
+    container_name: minio_db
     volumes:
       - type: bind
         source: /mnt/data/compose
