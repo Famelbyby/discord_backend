@@ -79,6 +79,23 @@ async def save_profile(
             detail=str(e),
         )
 
+@profile_router.post('/by-array')
+async def get_profiles_array(
+    db: Annotated[AsyncSession, Depends(db.get_async_session)],
+    ids: list[str],
+):
+    statement = (
+        select(ProfileORM)
+        .where(ProfileORM.id.in_(ids))
+    )
+    
+    result = await db.execute(statement)
+    profiles = result.scalars().all()
+    
+    if not profiles:
+        return {"profiles": []}
+    
+    return {"profiles": profiles}
 
 @profile_router.get("/{id}", status_code=st.HTTP_200_OK)
 async def get_profile(
