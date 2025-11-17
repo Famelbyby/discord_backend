@@ -6,13 +6,11 @@ import (
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -26,78 +24,6 @@ const recordsOnPage = 30
 
 type RelationsClient struct {
 	relationsAPi relationsv1.RelationsClient
-}
-
-type Profile struct {
-	ID        string `json:"id"`
-	ShortLink string `json:"short_link"`
-	Mail      string `json:"mail"`
-	Username  string `json:"username"`
-	CreatedAt int64  `json:"created_at"`
-	AvatarURL string `json:"avatar_url"`
-	Status    string `json:"status"`
-}
-
-func GetProfileById(id string) (Profile, error) {
-	type ProfileClientResponse struct {
-		Profile Profile `json:"profile"`
-	}
-
-	resp, err := http.Get("http://profile_py:9999/api/profile/" + id)
-
-	if err != nil {
-		slog.Error("client profile error: " + err.Error())
-		return Profile{}, err
-	}
-
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		slog.Error("client Login error: " + err.Error())
-		return Profile{}, err
-	}
-
-	var profileResponse ProfileClientResponse
-
-	if err := json.Unmarshal(body, &profileResponse); err != nil {
-		slog.Error("client Login error: " + err.Error())
-
-		return Profile{}, err
-	}
-
-	return profileResponse.Profile, nil
-}
-
-func GetProfiles(profileIds []string) []Profile {
-	var profiles = []Profile{}
-
-	wg := sync.WaitGroup{}
-	mutex := sync.Mutex{}
-
-	for _, id := range profileIds {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			profile, err := GetProfileById(id)
-
-			if err != nil {
-				slog.Error("client profile error: " + err.Error())
-			} else {
-				mutex.Lock()
-
-				profiles = append(profiles, profile)
-
-				mutex.Unlock()
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	return profiles
 }
 
 func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Request) {

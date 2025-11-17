@@ -49,6 +49,12 @@ func main() {
 	router.HandleFunc("/api/outcoming/{id}", relationsClient.GetAllOutgoingOffers).Methods(http.MethodGet, http.MethodOptions)
 	router.HandleFunc("/api/blocks/{id}", relationsClient.GetAllBlockedUsers).Methods(http.MethodGet, http.MethodOptions)
 
+	router.HandleFunc("/api/profile", HandleGetProfile).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/profile", HandleSaveProfile).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/profile/{id}", HandleGetProfileById).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/profile/{id}", HandleDeleteProfileById).Methods(http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/api/profile/{id}", HandleEditProfileById).Methods(http.MethodPut, http.MethodOptions)
+
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
 
