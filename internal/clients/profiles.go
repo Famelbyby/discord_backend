@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"mime/multipart"
 	"net/http"
-	"sync"
 )
 
 type Profile struct {
@@ -21,66 +20,47 @@ type Profile struct {
 	Status    string `json:"status"`
 }
 
-func GetProfileById(id string) (Profile, error) {
-	type ProfileClientResponse struct {
-		Profile Profile `json:"profile"`
+func GetProfiles(profileIds []string) []Profile {
+	type ProfilesClientResponse struct {
+		Profiles []Profile `json:"profiles"`
 	}
 
-	resp, err := http.Get("http://profile_py:9999/api/profile/" + id)
+	profilesRequestBody, err := json.Marshal(profileIds)
 
 	if err != nil {
-		slog.Error("client profile error: " + err.Error())
-		return Profile{}, err
+		slog.Error("http.NewRequest client profiles error: " + err.Error())
+		return []Profile{}
 	}
 
+	targetURL := "http://profile_py:9999/api/profile/by-array"
+	postReq, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(profilesRequestBody))
+	if err != nil {
+		slog.Error("http.NewRequest client profiles error: " + err.Error())
+		return []Profile{}
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(postReq)
+	if err != nil {
+		slog.Error(" client.Do client profiles error: " + err.Error())
+		return []Profile{}
+	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		slog.Error("client Login error: " + err.Error())
-		return Profile{}, err
+		slog.Error("client profiles error: " + err.Error())
+		return []Profile{}
 	}
 
-	var profileResponse ProfileClientResponse
+	var profiles ProfilesClientResponse
 
-	if err := json.Unmarshal(body, &profileResponse); err != nil {
-		slog.Error("client Login error: " + err.Error())
-
-		return Profile{}, err
+	if err := json.Unmarshal(body, &profiles); err != nil {
+		slog.Error("client profiles error: " + err.Error())
+		return []Profile{}
 	}
 
-	return profileResponse.Profile, nil
-}
-
-func GetProfiles(profileIds []string) []Profile {
-	var profiles = []Profile{}
-
-	wg := sync.WaitGroup{}
-	mutex := sync.Mutex{}
-
-	for _, id := range profileIds {
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-
-			profile, err := GetProfileById(id)
-
-			if err != nil {
-				slog.Error("client profile error: " + err.Error())
-			} else {
-				mutex.Lock()
-
-				profiles = append(profiles, profile)
-
-				mutex.Unlock()
-			}
-		}()
-	}
-
-	wg.Wait()
-
-	return profiles
+	return profiles.Profiles
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
