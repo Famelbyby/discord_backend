@@ -41,7 +41,7 @@ func TestRegister_Login_HappyPath(t *testing.T) {
 	loginTime := time.Now()
 	require.NoError(t, err)
 
-	token := respLogin.GetToken()
+	token := respLogin.GetSessionId()
 	require.NotEmpty(t, token)
 
 	tokenParsed, err := jwt.Parse(token, func(token *jwt.Token) (interface{}, error) {

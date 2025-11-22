@@ -31,8 +31,10 @@ func main() {
 	runtime.GOMAXPROCS(GOMAXPROCS)
 
 	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
-	router.HandleFunc("/api/register", authClient.Regsiter).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/register", authClient.Register).Methods(http.MethodPost, http.MethodOptions)
 	router.HandleFunc("/api/login", authClient.Login).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/logout", authClient.Logout).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/is-registered", authClient.IsRegistered).Methods(http.MethodGet, http.MethodOptions)
 
 	relationsClient, _ := NewRelationsClient(common.GrpcRelationsAddress(cfg), cfg.Clients.Relations.Timeout, cfg.Clients.Relations.RetriesCount)
 	router.HandleFunc("/api/relation", relationsClient.CreateNewRelation).Methods(http.MethodPost, http.MethodOptions)

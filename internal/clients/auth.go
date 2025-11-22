@@ -20,6 +20,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const (
+	maxAge = time.Hour * 24 * 7
+)
+
 type AuthClient struct {
 	authAPi authv1.AuthClient
 }
@@ -82,9 +86,11 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 	request := &authv1.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
+		Id:       profilesResponse.Profiles[0].ID,
 	}
 
-	_, err = c.authAPi.Login(context.Background(), request)
+	loginResponse, err := c.authAPi.Login(context.Background(), request)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid credentials") {
 			utils.WriteError(w, "Invalid credentials")
@@ -94,6 +100,15 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(loginResponse.SessionId),
+		MaxAge:   int(maxAge / 1_000_000_000),
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: http.SameSiteDefaultMode,
+	})
 
 	responseJson, err := json.Marshal(profilesResponse.Profiles[0])
 	if err != nil {
@@ -111,7 +126,7 @@ type registerRequest struct {
 	Password string `form:"password"`
 }
 
-func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
+func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Не удалось разобрать multipart-форму", http.StatusBadRequest)
 		return
@@ -220,6 +235,93 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 	// Копируем тело ответа.
 	io.Copy(w, resp.Body)
 }
+
+func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {
+	sessionCookie, err := r.Cookie("session_id")
+
+	if err == http.ErrNoCookie {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "unauthorized")
+		return
+	}
+
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	request := &authv1.LogoutRequest{
+		SessionId: sessionCookie.Value,
+	}
+
+	_, err = c.authAPi.Logout(context.Background(), request)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no session") {
+			slog.Error("client login error: no session")
+			utils.WriteError(w, "unauthorized")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
+	sessionCookie, err := r.Cookie("session_id")
+
+	if err == http.ErrNoCookie {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "unauthorized")
+		return
+	}
+
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	request := &authv1.IsRegisteredRequest{
+		SessionId: sessionCookie.Value,
+	}
+
+	isRegisteredResponse, err := c.authAPi.IsRegistered(context.Background(), request)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no session") {
+			slog.Error("client login error: no session")
+			utils.WriteError(w, "unauthorized")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	var ids = []string{isRegisteredResponse.UserId}
+
+	profiles := GetProfiles(ids)
+	profileJson, err := json.Marshal(profiles[0])
+
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(profileJson)
+}
+
 func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthClient, error) {
 	retryOptions := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),

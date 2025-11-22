@@ -38,6 +38,7 @@ services:
       - app-network
     depends_on:
       - postgres
+      - redis
 
   relations_go:
     build:
@@ -96,6 +97,19 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis
+    container_name: redis_container
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   minio:
     <<: *minio-common
     hostname: minio
@@ -130,6 +144,7 @@ volumes:
   pg_data:
   go_back:
   mongo_data:
+  redis_data:
 
 networks:
   app-network:
