@@ -27,7 +27,9 @@ class ChatORM(Base):
     )
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     lead_id: Mapped[str] = mapped_column(nullable=False)
-    users: Mapped[List["Association"]] = relationship(back_populates="chat")
+    users: Mapped[List["Association"]] = relationship(
+        back_populates="chat", cascade="all, delete-orphan"
+    )
 
 
 class UserORM(Base):

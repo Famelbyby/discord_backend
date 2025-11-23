@@ -1,7 +1,15 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Literal, List
 
-RuleType = Literal['camera', 'chat', 'call', '']
+from core.db import db
+
+from models.chat import ChatORM, Association
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
+
+RuleType = Literal['camera', 'chat', 'call']
 
 DEFAULT_RULES: List[RuleType] = ['camera', 'chat', 'call']
 MAX_USERS = 10
@@ -66,3 +74,67 @@ class ChatCreate(BaseModel):
 
 class ChatDisplay(ChatCreate):
     id: str
+
+
+class ChatUserResponse(BaseModel):
+    id: str
+    rules: List[str]
+
+
+class ChatResponse(BaseModel):
+    id: str
+    name: str
+    lead_id: str
+    users: List[ChatUserResponse]
+
+
+class ChatUpdateRequest(BaseModel):
+    name: Optional[str] = Field(
+        description="Название чата",
+        max_length=100,
+        default="Название чата",
+    )
+    users: List[UserInChat] = Field(default_factory=list)
+
+    @field_validator('users')
+    @classmethod
+    def validate_users_count(cls, v):
+        if len(v) > 10:
+            raise ValueError('Maximum 10 users allowed in chat')
+        return v
+
+
+class ChatUpdateResponse(BaseModel):
+    id: str
+    name: str
+    lead_id: str
+    users: List[UserInChat]
+
+
+async def format_chat_response(
+    chat: ChatORM, db: AsyncSession
+) -> ChatUpdateResponse:
+    """Форматирует ответ с информацией о чате"""
+    # Загружаем пользователей чата
+    stmt = (
+        select(Association)
+        .where(Association.chat_id == chat.id)
+        .options(selectinload(Association.user))
+    )
+    result = await db.execute(stmt)
+    associations = result.scalars().all()
+
+    users_response = []
+    for association in associations:
+        users_response.append(
+            UserInChat(
+                id=association.user.main_id,
+                rules=(
+                    association.rules.split(',') if association.rules else []
+                ),
+            )
+        )
+
+    return ChatUpdateResponse(
+        id=chat.id, name=chat.name, lead_id=chat.lead_id, users=users_response
+    )
