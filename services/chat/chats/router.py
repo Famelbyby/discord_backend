@@ -195,11 +195,19 @@ async def delete_user_from_chat(
     chat: Annotated[ChatORM, Depends(get_chat_by_id)],
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
 ):
+    if not chat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat doesn't exist")
 
     if chat.lead_id != lead_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not leader of chat",
+        )
+        
+    if chat.lead_id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can not delete yourself"
         )
 
     user_stmt = select(UserORM).where(UserORM.main_id == user_id)
