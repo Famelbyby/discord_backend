@@ -145,7 +145,7 @@ services:
     command: >
       sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
     ports:
-      - "9091:9090"
+      - "9091:9091"
     volumes:
       - ./app:/app/app
     networks:

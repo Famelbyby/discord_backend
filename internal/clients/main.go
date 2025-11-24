@@ -57,6 +57,13 @@ func main() {
 	router.HandleFunc("/api/profile/{id}", HandleDeleteProfileById).Methods(http.MethodDelete, http.MethodOptions)
 	router.HandleFunc("/api/profile/{id}", HandleEditProfileById).Methods(http.MethodPut, http.MethodOptions)
 
+	router.HandleFunc("/api/chat", HandleGetUserChats).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/chat", HandleCreateChat).Methods(http.MethodPost, http.MethodOptions)
+	router.HandleFunc("/api/chat/{id}", HandleGetChatById).Methods(http.MethodGet, http.MethodOptions)
+	router.HandleFunc("/api/chat/{id}", HandleDeleteChatById).Methods(http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/api/chat/{id}/delete_user", HandleDeleteUserFromChat).Methods(http.MethodDelete, http.MethodOptions)
+	router.HandleFunc("/api/chat/{id}", HandleUpdateChat).Methods(http.MethodPut, http.MethodOptions)
+
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
 

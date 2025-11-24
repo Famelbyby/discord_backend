@@ -7,7 +7,7 @@ COPY . .
 
 RUN go mod download
 RUN go mod tidy
-RUN go build -o main clients/main.go clients/auth.go clients/relations.go clients/profiles.go
+RUN go build -o main clients/main.go clients/auth.go clients/relations.go clients/profiles.go clients/chats.go
 
 FROM alpine:edge AS prod
 

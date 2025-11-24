@@ -10,6 +10,10 @@ import (
 	"net/http"
 )
 
+const (
+	profileUrl = "http://profile_py:9999"
+)
+
 type Profile struct {
 	ID        string `json:"id"`
 	ShortLink string `json:"short_link"`
@@ -32,7 +36,7 @@ func GetProfiles(profileIds []string) []Profile {
 		return []Profile{}
 	}
 
-	targetURL := "http://profile_py:9999/api/profile/by-array"
+	targetURL := profileUrl + "/api/profile/by-array"
 	postReq, err := http.NewRequest("POST", targetURL, bytes.NewBuffer(profilesRequestBody))
 	if err != nil {
 		slog.Error("http.NewRequest client profiles error: " + err.Error())
@@ -64,7 +68,7 @@ func GetProfiles(profileIds []string) []Profile {
 }
 
 func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
-	url := "http://profile_py:9999" + r.URL.RequestURI()
+	url := profileUrl + r.URL.RequestURI()
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -82,12 +86,13 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
 
 func HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
-	url := "http://profile_py:9999" + r.URL.RequestURI()
+	url := profileUrl + r.URL.RequestURI()
 
 	resp, err := http.Get(url)
 	if err != nil {
@@ -104,16 +109,27 @@ func HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
 
 func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
-	url := "http://profile_py:9999" + r.URL.RequestURI()
+	url := profileUrl + r.URL.RequestURI()
 
-	resp, err := http.NewRequest(http.MethodDelete, url, r.Body)
+	req, err := http.NewRequest(http.MethodDelete, url, r.Body)
 	if err != nil {
 		slog.Error("client HandleDeleteProfileById error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+
+	if err != nil {
+		slog.Error("client HandleEditProfileById error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
@@ -126,7 +142,8 @@ func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }
 
@@ -176,7 +193,7 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 3. Создание и отправка нового запроса.
-	targetURL := "http://profile_py:9999/api/profile"
+	targetURL := profileUrl + "api/profile"
 	postReq, err := http.NewRequest("POST", targetURL, body)
 	if err != nil {
 		slog.Error("http.NewRequest client Regsiter error: " + err.Error())
@@ -197,14 +214,24 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
 
 func HandleEditProfileById(w http.ResponseWriter, r *http.Request) {
-	url := "http://profile_py:9999" + r.URL.RequestURI()
+	url := profileUrl + r.URL.RequestURI()
 
-	resp, err := http.NewRequest(http.MethodPut, url, r.Body)
+	req, err := http.NewRequest(http.MethodPut, url, r.Body)
+	if err != nil {
+		slog.Error("client HandleEditProfileById error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	client := &http.Client{}
+
+	resp, err := client.Do(req)
+
 	if err != nil {
 		slog.Error("client HandleEditProfileById error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -220,6 +247,7 @@ func HandleEditProfileById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
-	w.WriteHeader(http.StatusOK)
+
+	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
 }

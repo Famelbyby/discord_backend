@@ -5,7 +5,7 @@ WORKDIR /chat
 COPY ./ /chat
 
 
-EXPOSE 9090
+EXPOSE 9091
 RUN pip install poetry==1.8.2 
 RUN poetry install --no-root
 

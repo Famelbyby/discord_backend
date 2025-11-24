@@ -79,11 +79,20 @@ async def create_chat(
 
 
 @chat_router.get("/{chat_id}")
-async def get_chat(chat: Annotated[ChatORM, Depends(get_chat_by_id)]):
+async def get_chat(
+    chat: Annotated[ChatORM, Depends(get_chat_by_id)], 
+    user_id: str,
+):
 
     if not chat:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
+        )
+
+    if chat.lead_id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat not found"
         )
 
     users = [
