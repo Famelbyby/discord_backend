@@ -43,15 +43,6 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type Profile struct {
-		ID        string `json:"id"`
-		ShortLink string `json:"short_link"`
-		Mail      string `json:"mail"`
-		Username  string `json:"username"`
-		CreatedAt int64  `json:"created_at"`
-		AvatarURL string `json:"avatar_url"`
-		Status    string `json:"status"`
-	}
 	type ProfilesResponse struct {
 		Profiles []Profile `json:"profiles"`
 	}
@@ -80,6 +71,14 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 	if err := json.Unmarshal(body, &profilesResponse); err != nil {
 		slog.Error("client Login error: " + err.Error())
 		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	if len(profilesResponse.Profiles) == 0 {
+		slog.Error("client Login error: invalid credentials")
+		w.WriteHeader(http.StatusBadRequest)
+		utils.WriteError(w, "Invalid credentials")
+
 		return
 	}
 
@@ -193,14 +192,32 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	req := registerRequest{
-		Email:    r.FormValue("mail"),
-		Password: r.FormValue("password"),
+	profileBody, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		slog.Error(" client.Do client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	type ProfileResponse struct {
+		Profile Profile `json:"profile"`
+	}
+
+	var createdProfile ProfileResponse
+
+	err = json.Unmarshal(profileBody, &createdProfile.Profile)
+
+	if err != nil {
+		slog.Error(" client.Do client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
 	}
 
 	request := &authv1.RegisterRequest{
-		Email:    req.Email,
-		Password: req.Password,
+		Email:    r.FormValue("mail"),
+		Password: r.FormValue("password"),
+		Id:       createdProfile.Profile.ID,
 	}
 
 	registerResponse, err := c.authApi.Register(r.Context(), request)
@@ -230,10 +247,20 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(key, value)
 		}
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(registerResponse.SessionId),
+		MaxAge:   int(maxAge / 1_000_000_000),
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: http.SameSiteDefaultMode,
+	})
+
 	// Устанавливаем статус-код ответа.
 	w.WriteHeader(resp.StatusCode)
 	// Копируем тело ответа.
-	io.Copy(w, resp.Body)
+	w.Write(profileBody)
 }
 
 func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {

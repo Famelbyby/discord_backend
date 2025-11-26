@@ -9,6 +9,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 const DefaultSessionLifetime = 10 * time.Hour
@@ -81,11 +83,22 @@ func CompareUserIDsInQuery(r *http.Request, sessionUserKey any, userIdKey string
 
 	params := u.Query()
 	userId := params.Get(userIdKey)
-
 	sessionUserId := r.Context().Value(sessionUserKey)
 
 	if sessionUserId != userId {
 		return fmt.Errorf("session user ID and provided ID mismatch")
+	}
+
+	return nil
+}
+
+func CompareUserIDsInParams(r *http.Request, sessionUserKey any, userIdKey string) error {
+	vars := mux.Vars(r)
+	userId := vars[userIdKey]
+	sessionUserId := r.Context().Value(sessionUserKey)
+
+	if sessionUserId != userId {
+		return fmt.Errorf("session user ID and provided ID mismatch: %s, %s", userId, sessionUserId)
 	}
 
 	return nil

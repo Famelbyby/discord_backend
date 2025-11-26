@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+	"discord_backend/internal/middlewares"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"time"
 )
 
 const (
@@ -115,6 +117,16 @@ func HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	url := profileUrl + r.URL.RequestURI()
 
 	req, err := http.NewRequest(http.MethodDelete, url, r.Body)
@@ -142,6 +154,15 @@ func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		MaxAge:   -1,
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: http.SameSiteDefaultMode,
+	})
 
 	w.WriteHeader(resp.StatusCode)
 	w.Write(body)
@@ -219,6 +240,16 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleEditProfileById(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	url := profileUrl + r.URL.RequestURI()
 
 	req, err := http.NewRequest(http.MethodPut, url, r.Body)

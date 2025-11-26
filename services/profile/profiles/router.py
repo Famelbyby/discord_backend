@@ -141,7 +141,7 @@ async def delete_profile(
     await db.commit()
 
 
-@profile_router.put("/{id}", status_code=st.HTTP_201_CREATED)
+@profile_router.put("/{id}", status_code=st.HTTP_200_OK)
 async def edit_profile(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
     profile: Annotated[ProfileORM, Depends(check_if_profile_exists)],

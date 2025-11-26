@@ -15,7 +15,7 @@ import (
 
 type Auth interface {
 	Login(ctx context.Context, email string, password string, id string) (token string, err error)
-	RegisterNewUser(ctx context.Context, email string, password string) (userId int64, err error)
+	RegisterNewUser(ctx context.Context, email string, password string, id string) (sessionId string, err error)
 	Logout(ctx context.Context, sessionId string) error
 	IsRegistered(ctx context.Context, sessionId string) (userId string, err error)
 }
@@ -53,13 +53,14 @@ func (s *serverAPI) Login(ctx context.Context, req *authv1.LoginRequest) (*authv
 func (s *serverAPI) Register(ctx context.Context, req *authv1.RegisterRequest) (*authv1.RegisterResponse, error) {
 	email := req.GetEmail()
 	password := req.GetPassword()
+	id := req.GetId()
 
 	if err := validateRegister(req); err != nil {
 		slog.Error("grpc Register error: " + err.Error())
 		return nil, fmt.Errorf("grpc Register error: " + err.Error())
 	}
 
-	userID, err := s.auth.RegisterNewUser(ctx, email, password)
+	sessionId, err := s.auth.RegisterNewUser(ctx, email, password, id)
 
 	if err != nil {
 		if errors.Is(err, auth.ErrUserExists) {
@@ -69,7 +70,7 @@ func (s *serverAPI) Register(ctx context.Context, req *authv1.RegisterRequest) (
 		return nil, fmt.Errorf("grpc Register error: " + err.Error())
 	}
 	return &authv1.RegisterResponse{
-		UserId: userID,
+		SessionId: sessionId,
 	}, nil
 }
 

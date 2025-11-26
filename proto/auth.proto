@@ -27,10 +27,11 @@ message IsAdminResponse {
 message RegisterRequest {
   string email = 1; // Email of the user to register.
   string password = 2; // Password of the user to register.
+  string id = 3; // User ID to create session token.
 }
 
 message RegisterResponse {
-  int64 user_id = 1; // User ID of the registered user.
+  string session_id = 1; // Session ID of the registered user.
 }
 
 message LoginRequest {

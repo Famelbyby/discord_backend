@@ -63,32 +63,7 @@ func New(log *slog.Logger, userProvider UserProvider, userSaver UserSaver, sessi
 	}
 }
 
-func (a *Auth) Login(
-	ctx context.Context,
-	email string,
-	password string,
-	id string,
-) (string, error) {
-	slog.Info("logining")
-
-	user, err := a.userProvider.User(ctx, email)
-	if err != nil {
-		if errors.Is(err, storage.ErrUserNotFound) {
-			a.log.Warn("user not found", sl.Err(err))
-
-			return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
-		}
-
-		a.log.Error("failed to get user", sl.Err(err))
-		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
-	}
-
-	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
-		a.log.Info("invalid credentials", sl.Err(err))
-
-		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
-	}
-
+func AddSession(a *Auth, ctx context.Context, id string) (string, error) {
 	existedSessionId, err := a.sessionProvider.Get(ctx, id).Result()
 
 	if err != redis.Nil {
@@ -140,30 +115,90 @@ func (a *Auth) Login(
 	return sessionId, nil
 }
 
+func (a *Auth) Login(
+	ctx context.Context,
+	email string,
+	password string,
+	id string,
+) (string, error) {
+	slog.Info("logining")
+
+	user, err := a.userProvider.User(ctx, email)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			a.log.Warn("user not found", sl.Err(err))
+
+			return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
+		}
+
+		a.log.Error("failed to get user", sl.Err(err))
+		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
+	}
+
+	if err := bcrypt.CompareHashAndPassword(user.PasswordHash, []byte(password)); err != nil {
+		a.log.Info("invalid credentials", sl.Err(err))
+
+		return "", fmt.Errorf("service Login error: " + ErrInvalidCredentials.Error())
+	}
+
+	existedSessionId, err := a.sessionProvider.Get(ctx, id).Result()
+
+	if err != redis.Nil {
+		_, err := a.sessionProvider.Del(ctx, id).Result()
+
+		if err != nil {
+			return "", fmt.Errorf("service Login error: " + err.Error())
+		}
+
+		_, err = a.sessionProvider.Del(ctx, existedSessionId).Result()
+
+		if err != nil {
+			return "", fmt.Errorf("service Login error: " + err.Error())
+		}
+	}
+
+	sessionId, err := AddSession(a, ctx, id)
+
+	if err != nil {
+		return "", err
+	}
+
+	return sessionId, nil
+}
+
 func (a *Auth) RegisterNewUser(
 	ctx context.Context,
 	email string,
 	password string,
-) (int64, error) {
+	id string,
+) (string, error) {
 	slog.Info("Registering user")
 	passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 
 		slog.Error("Failed to generate password hash", sl.Err(err))
-		return -1, fmt.Errorf("servic RegisterNewUser error: " + err.Error())
+		return "", fmt.Errorf("servic RegisterNewUser error: " + err.Error())
 	}
-	id, err := a.userSaver.SaveUser(ctx, email, passHash)
+	_, err = a.userSaver.SaveUser(ctx, email, passHash)
 	if err != nil {
 		if errors.Is(err, storage.ErrUserExists) {
 			slog.Warn("User already exists")
 
-			return -1, fmt.Errorf("servic RegisterNewUser error: " + storage.ErrUserExists.Error())
+			return "", fmt.Errorf("servic RegisterNewUser error: " + storage.ErrUserExists.Error())
 		}
 		slog.Error("Failed to save user", sl.Err(err))
-		return -1, fmt.Errorf("servic Login error: " + err.Error())
+		return "", fmt.Errorf("servic Login error: " + err.Error())
 	}
 
-	return id, nil
+	sessionId, err := AddSession(a, ctx, id)
+
+	fmt.Println(sessionId)
+
+	if err != nil {
+		return "", err
+	}
+
+	return sessionId, nil
 }
 
 func (a *Auth) Logout(
