@@ -97,16 +97,6 @@ func HandleGetUserChats(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleGetChatById(w http.ResponseWriter, r *http.Request) {
-	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "user_id")
-
-	if err != nil {
-		slog.Error("client HandleGetProfile error: " + err.Error())
-		w.WriteHeader(http.StatusForbidden)
-		utils.WriteError(w, "forbidden")
-
-		return
-	}
-
 	url := chatsUrl + r.URL.RequestURI()
 
 	resp, err := http.Get(url)

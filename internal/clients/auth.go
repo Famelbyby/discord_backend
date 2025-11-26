@@ -21,7 +21,9 @@ import (
 )
 
 const (
-	maxAge = time.Hour * 24 * 7
+	maxAge   = time.Hour * 24 * 7
+	sameSite = http.SameSiteDefaultMode
+	secure   = false
 )
 
 type AuthClient struct {
@@ -106,7 +108,8 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(maxAge / 1_000_000_000),
 		Expires:  time.Now().Add(maxAge),
 		HttpOnly: true,
-		SameSite: http.SameSiteDefaultMode,
+		SameSite: sameSite,
+		Secure:   secure,
 	})
 
 	responseJson, err := json.Marshal(profilesResponse.Profiles[0])
@@ -254,7 +257,8 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   int(maxAge / 1_000_000_000),
 		Expires:  time.Now().Add(maxAge),
 		HttpOnly: true,
-		SameSite: http.SameSiteDefaultMode,
+		SameSite: sameSite,
+		Secure:   secure,
 	})
 
 	// Устанавливаем статус-код ответа.
@@ -303,7 +307,8 @@ func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {
 		MaxAge:   -1,
 		Expires:  time.Now().Add(maxAge),
 		HttpOnly: true,
-		SameSite: http.SameSiteDefaultMode,
+		SameSite: sameSite,
+		Secure:   secure,
 	})
 
 	w.WriteHeader(http.StatusNoContent)

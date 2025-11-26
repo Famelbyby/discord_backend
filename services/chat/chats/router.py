@@ -89,12 +89,6 @@ async def get_chat(
             status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
         )
 
-    if chat.lead_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat not found"
-        )
-
     users = [
         {
             "id": user.user.main_id,
@@ -104,6 +98,20 @@ async def get_chat(
         }
         for user in chat.users
     ]
+    
+    flag = False
+    
+    for user in users:
+        if user["id"] == user_id:
+            flag = True
+            break
+        
+    if not flag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat not found"
+        )
+    
     chat_display = ChatDisplay(
         id=chat.id, name=chat.name, lead_id=chat.lead_id, users=users
     )

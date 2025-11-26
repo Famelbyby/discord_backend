@@ -27,6 +27,10 @@ type Profile struct {
 }
 
 func GetProfiles(profileIds []string) []Profile {
+	if len(profileIds) == 0 {
+		return []Profile{}
+	}
+
 	type ProfilesClientResponse struct {
 		Profiles []Profile `json:"profiles"`
 	}

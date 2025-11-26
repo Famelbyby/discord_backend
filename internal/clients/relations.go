@@ -527,7 +527,7 @@ func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
 func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) {
 	type getAllFriendsResponse struct {
 		Error   string    `json:"error,omitempty"`
-		Friends []Profile `json:"friends,omitempty"`
+		Friends []Profile `json:"friends"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -580,6 +580,9 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 	}
 
 	respJson, err := json.Marshal(resp)
+
+	fmt.Println(string(respJson))
+
 	if err != nil {
 		slog.Error("[GetAllFriends] client error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -593,7 +596,7 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllIncomingssResponse struct {
 		Error     string    `json:"error,omitempty"`
-		Incomings []Profile `json:"incomings,omitempty"`
+		Incomings []Profile `json:"incomings"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -658,7 +661,7 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllOutgoingsResponse struct {
 		Error      string    `json:"error,omitempty"`
-		Outcomings []Profile `json:"outcomings,omitempty"`
+		Outcomings []Profile `json:"outcomings"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -723,7 +726,7 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Request) {
 	type getAlBlocksResponse struct {
 		Error  string    `json:"error,omitempty"`
-		Blocks []Profile `json:"blocks,omitempty"`
+		Blocks []Profile `json:"blocks"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)

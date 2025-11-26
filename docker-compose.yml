@@ -154,6 +154,15 @@ services:
       - postgres
 
     restart: unless-stopped
+
+  frontend:
+    ports:
+      - "3000:3000"
+    image: discord-frontend
+    container_name: discord_frontend
+    networks:
+      - app-network
+
 volumes:
   minio_data:
   pg_data:
