@@ -25,7 +25,7 @@ const (
 )
 
 type AuthClient struct {
-	authAPi authv1.AuthClient
+	authApi authv1.AuthClient
 }
 
 type loginRequest struct {
@@ -89,7 +89,7 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		Id:       profilesResponse.Profiles[0].ID,
 	}
 
-	loginResponse, err := c.authAPi.Login(context.Background(), request)
+	loginResponse, err := c.authApi.Login(context.Background(), request)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid credentials") {
@@ -203,7 +203,7 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	}
 
-	registerResponse, err := c.authAPi.Register(r.Context(), request)
+	registerResponse, err := c.authApi.Register(r.Context(), request)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			utils.WriteError(w, "User already exists")
@@ -255,7 +255,7 @@ func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {
 		SessionId: sessionCookie.Value,
 	}
 
-	_, err = c.authAPi.Logout(context.Background(), request)
+	_, err = c.authApi.Logout(context.Background(), request)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no session") {
@@ -269,6 +269,15 @@ func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		MaxAge:   -1,
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: http.SameSiteDefaultMode,
+	})
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -292,7 +301,7 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 		SessionId: sessionCookie.Value,
 	}
 
-	isRegisteredResponse, err := c.authAPi.IsRegistered(context.Background(), request)
+	isRegisteredResponse, err := c.authApi.IsRegistered(context.Background(), request)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no session") {
@@ -338,6 +347,6 @@ func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthC
 	}
 
 	return &AuthClient{
-		authAPi: authv1.NewAuthClient(cc),
+		authApi: authv1.NewAuthClient(cc),
 	}, nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
@@ -69,4 +70,23 @@ func RemoveByValue(slice []string, value string) []string {
 		}
 	}
 	return result
+}
+
+func CompareUserIDsInQuery(r *http.Request, sessionUserKey any, userIdKey string) error {
+	u, err := url.Parse(r.URL.Host + r.URL.RequestURI())
+
+	if err != nil {
+		return err
+	}
+
+	params := u.Query()
+	userId := params.Get(userIdKey)
+
+	sessionUserId := r.Context().Value(sessionUserKey)
+
+	if sessionUserId != userId {
+		return fmt.Errorf("session user ID and provided ID mismatch")
+	}
+
+	return nil
 }

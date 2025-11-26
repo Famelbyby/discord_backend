@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"discord_backend/internal/middlewares"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"io"
@@ -62,9 +63,19 @@ func GetProfilesOfChatUsers(chatUsers []ChatUser) []ChatUserProfile {
 }
 
 func HandleGetUserChats(w http.ResponseWriter, r *http.Request) {
-	url := chatsUrl + r.URL.RequestURI()
+	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "user_id")
 
-	resp, err := http.Get(url)
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
+	reqUrl := chatsUrl + r.URL.RequestURI()
+
+	resp, err := http.Get(reqUrl)
 
 	if err != nil {
 		slog.Error("client HandleGetProfile error: " + err.Error())
@@ -86,6 +97,16 @@ func HandleGetUserChats(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleGetChatById(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "user_id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	url := chatsUrl + r.URL.RequestURI()
 
 	resp, err := http.Get(url)
@@ -138,6 +159,16 @@ func HandleGetChatById(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleDeleteChatById(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "user_id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	url := chatsUrl + r.URL.RequestURI()
 
 	req, err := http.NewRequest(http.MethodDelete, url, r.Body)
@@ -171,6 +202,16 @@ func HandleDeleteChatById(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleDeleteUserFromChat(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "lead_id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	url := chatsUrl + r.URL.RequestURI()
 
 	req, err := http.NewRequest(http.MethodDelete, url, r.Body)
@@ -293,6 +334,16 @@ func HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 }
 
 func HandleUpdateChat(w http.ResponseWriter, r *http.Request) {
+	err := utils.CompareUserIDsInQuery(r, middlewares.UserKey, "user_id")
+
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		w.WriteHeader(http.StatusForbidden)
+		utils.WriteError(w, "forbidden")
+
+		return
+	}
+
 	bytes1 := &bytes.Buffer{}
 
 	copiedBody := io.TeeReader(r.Body, bytes1)
