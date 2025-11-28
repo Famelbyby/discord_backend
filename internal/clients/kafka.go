@@ -16,14 +16,14 @@ var (
 func InitKafka() {
 	// Writer для отправки в chat-in
 	kafkaWriter = &kafka.Writer{
-		Addr:     kafka.TCP("localhost:9092"),
+		Addr:     kafka.TCP("kafka-container:9092"),
 		Topic:    "chat-in",
 		Balancer: &kafka.LeastBytes{},
 	}
 
 	// Reader для чтения из chat-out
 	kafkaReader = kafka.NewReader(kafka.ReaderConfig{
-		Brokers: []string{"localhost:9092"},
+		Brokers: []string{"kafka-container:9092"},
 		Topic:   "chat-out",
 		GroupID: "chat-server-group", // GroupID важен, чтобы читать сообщения только раз
 	})

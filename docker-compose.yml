@@ -5,7 +5,7 @@ x-minio-common: &minio-common
     - "9000:9000"
     - "9090:9090"
   healthcheck:
-    test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+    test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
     interval: 30s
     timeout: 20s
     retries: 3
@@ -139,28 +139,78 @@ services:
       - postgres
       - minio
     restart: unless-stopped
-  chats:
-    build: services/chat
-    container_name: chats_py
-    command: >
-      sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
+  # chats:
+  #   build: services/chat
+  #   container_name: chats_py
+  #   command: >
+  #     sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
+  #   ports:
+  #     - "9091:9091"
+  #   volumes:
+  #     - ./app:/app/app
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - postgres
+  #   restart: unless-stopped
+  # 1. Zookeeper (Координатор)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: zookeeper
     ports:
-      - "9091:9091"
-    volumes:
-      - ./app:/app/app
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
     networks:
       - app-network
-    depends_on:
-      - postgres
 
-    restart: unless-stopped
+  # 2. Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-container
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      # Настройки слушателей:
+      # PLAINTEXT: для общения между контейнерами (kafka UI -> kafka)
+      # PLAINTEXT_HOST: для общения с хостом (твой Go код -> kafka-container:9092)
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-container:29092,PLAINTEXT_HOST://kafka-container:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      # Автоматическое создание топиков
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - app-network
+
+  # 3. Kafka UI (Веб-интерфейс)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-container:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - app-network
 volumes:
   minio_data:
   pg_data:
   go_back:
   mongo_data:
   redis_data:
-
 
 networks:
   app-network:
