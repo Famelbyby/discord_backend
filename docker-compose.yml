@@ -154,13 +154,13 @@ services:
       - postgres
     restart: unless-stopped
 
-  frontend:
-    ports:
-      - "3000:3000"
-    image: discord-frontend
-    container_name: discord_frontend
-    networks:
-      - app-network
+  # frontend:
+  #   ports:
+  #     - "3000:3000"
+  #   image: discord-frontend
+  #   container_name: discord_frontend
+  #   networks:
+  #     - app-network
 
 
   zookeeper:

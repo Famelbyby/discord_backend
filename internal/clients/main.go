@@ -74,7 +74,7 @@ func main() {
 	authedRouter.HandleFunc("/api/chat/{id}", HandleDeleteChatById).Methods(http.MethodDelete, http.MethodOptions)
 	authedRouter.HandleFunc("/api/chat/{id}/delete_user", HandleDeleteUserFromChat).Methods(http.MethodDelete, http.MethodOptions)
 	authedRouter.HandleFunc("/api/chat/{id}", HandleUpdateChat).Methods(http.MethodPut, http.MethodOptions)
-	authedRouter.HandleFunc("/api/chatws", ChatWsHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet)
+	authedRouter.HandleFunc("/api/ws/chat", ChatWsHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet)
 
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")
