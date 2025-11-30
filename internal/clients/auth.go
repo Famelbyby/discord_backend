@@ -313,13 +313,13 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 	sessionCookie, err := r.Cookie("session_id")
 
 	if err == http.ErrNoCookie {
-		slog.Error("client Login error: " + err.Error())
+		slog.Error("client IsRegistered error: " + err.Error())
 		utils.WriteError(w, "unauthorized")
 		return
 	}
 
 	if err != nil {
-		slog.Error("client Login error: " + err.Error())
+		slog.Error("client IsRegistered error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
@@ -332,13 +332,13 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		if strings.Contains(err.Error(), "no session") {
-			slog.Error("client login error: no session")
+			slog.Error("client IsRegistered error: no session")
 			utils.WriteError(w, "unauthorized")
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		slog.Error("client Login error: " + err.Error())
+		slog.Error("client IsRegistered error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
@@ -349,7 +349,7 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 	profileJson, err := json.Marshal(profiles[0])
 
 	if err != nil {
-		slog.Error("client Login error: " + err.Error())
+		slog.Error("client IsRegistered error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}

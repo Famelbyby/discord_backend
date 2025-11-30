@@ -103,7 +103,7 @@ var (
 
 func ChatWsHandler(w http.ResponseWriter, r *http.Request) {
 	// Достаем UserID из контекста (положенного middleware)
-	userID := r.Context().Value("userID").(string)
+	userID := r.Context().Value(middlewares.UserKey).(string)
 
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {

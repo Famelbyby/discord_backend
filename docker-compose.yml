@@ -139,21 +139,21 @@ services:
       - postgres
       - minio
     restart: unless-stopped
-  # chats:
-  #   build: services/chat
-  #   container_name: chats_py
-  #   command: >
-  #     sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
-  #   ports:
-  #     - "9091:9091"
-  #   volumes:
-  #     - ./app:/app/app
-  #   networks:
-  #     - app-network
-  #   depends_on:
-  #     - postgres
-  #   restart: unless-stopped
-  # 1. Zookeeper (Координатор)
+  chats:
+    build: services/chat
+    container_name: chats_py
+    command: >
+      sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
+    ports:
+      - "9091:9091"
+    volumes:
+      - ./app:/app/app
+    networks:
+      - app-network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     hostname: zookeeper
@@ -177,17 +177,35 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      # Настройки слушателей:
-      # PLAINTEXT: для общения между контейнерами (kafka UI -> kafka)
-      # PLAINTEXT_HOST: для общения с хостом (твой Go код -> kafka-container:9092)
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-container:29092,PLAINTEXT_HOST://kafka-container:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      # Автоматическое создание топиков
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - app-network
+
+  init-kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/sh", "-c"]
+    command: |
+      "
+      # Блокируем выполнение, пока Kafka не будет готова (ждем до 30 сек)
+      echo -e 'Waiting for kafka to be ready...'
+      cub kafka-ready -b kafka-container:29092 1 30
+
+      # Создаем топики
+      echo -e 'Creating kafka topics...'
+      kafka-topics --bootstrap-server kafka-container:29092 --create --if-not-exists --topic chat-in --replication-factor 1 --partitions 1
+      kafka-topics --bootstrap-server kafka-container:29092 --create --if-not-exists --topic chat-out --replication-factor 1 --partitions 1
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka-container:29092 --list
+      "
     networks:
       - app-network
 
