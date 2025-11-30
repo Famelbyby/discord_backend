@@ -31,6 +31,13 @@ func main() {
 	authedRouter := router.NewRoute().Subrouter()
 	runtime.GOMAXPROCS(GOMAXPROCS)
 
+	InitKafka()
+	defer kafkaWriter.Close()
+	defer kafkaReader.Close()
+
+	// 2. Запуск Consumer'а для чтения chat-out в фоне
+	go StartKafkaConsumer()
+
 	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
 
 	authedRouter.Use(middlewares.SessionMiddleware(authClient.authApi))
@@ -67,6 +74,7 @@ func main() {
 	authedRouter.HandleFunc("/api/chat/{id}", HandleDeleteChatById).Methods(http.MethodDelete, http.MethodOptions)
 	authedRouter.HandleFunc("/api/chat/{id}/delete_user", HandleDeleteUserFromChat).Methods(http.MethodDelete, http.MethodOptions)
 	authedRouter.HandleFunc("/api/chat/{id}", HandleUpdateChat).Methods(http.MethodPut, http.MethodOptions)
+	authedRouter.HandleFunc("/api/chatws", ChatWsHandler).Methods(http.MethodPost, http.MethodOptions, http.MethodGet)
 
 	handler := middlewares.CorsMiddleware(router)
 	fmt.Println("Server is listening...")

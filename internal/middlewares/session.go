@@ -11,9 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type contextUserKey string
-
-const UserKey contextUserKey = "userId"
+const UserKey string = "userId"
 
 type SessionClient interface {
 	IsRegistered(ctx context.Context, r *authv1.IsRegisteredRequest, options ...grpc.CallOption) (*authv1.IsRegisteredResponse, error)
