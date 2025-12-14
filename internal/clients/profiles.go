@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"time"
 )
 
@@ -123,14 +122,8 @@ func (c *ProfilesClient) HandleGetProfile(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	var userId string
-	myUrl, _ := url.Parse(r.RequestURI)
-	params, _ := url.ParseQuery(myUrl.RawQuery)
-	userId = params.Get("id")
-	if userId == "" {
-		utils.WriteError(w, "Should have user's id parameter 'id'")
-		return
-	}
+	userId := r.Context().Value(middlewares.UserKey).(string)
+
 	targetIds := []string{}
 	for _, p := range profiles.Profiles {
 		targetIds = append(targetIds, p.ID)
