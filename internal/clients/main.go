@@ -38,7 +38,8 @@ func main() {
 	// 2. Запуск Consumer'а для чтения chat-out в фоне
 	go StartKafkaConsumer()
 
-	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount)
+	relationsClient, _ := NewRelationsClient(common.GrpcRelationsAddress(cfg), cfg.Clients.Relations.Timeout, cfg.Clients.Relations.RetriesCount)
+	authClient, _ := NewAuthClient(common.GrpcAuthAddress(cfg), cfg.Clients.Auth.Timeout, cfg.Clients.Auth.RetriesCount, relationsClient.relationsAPi)
 
 	authedRouter.Use(middlewares.SessionMiddleware(authClient.authApi))
 
@@ -47,7 +48,6 @@ func main() {
 	router.HandleFunc("/api/is-registered", authClient.IsRegistered).Methods(http.MethodGet, http.MethodOptions)
 	authedRouter.HandleFunc("/api/logout", authClient.Logout).Methods(http.MethodPost, http.MethodOptions)
 
-	relationsClient, _ := NewRelationsClient(common.GrpcRelationsAddress(cfg), cfg.Clients.Relations.Timeout, cfg.Clients.Relations.RetriesCount)
 	authedRouter.HandleFunc("/api/relation", relationsClient.CreateNewRelation).Methods(http.MethodPost, http.MethodOptions)
 	authedRouter.HandleFunc("/api/friends/{id}", relationsClient.SendFriendOffer).Methods(http.MethodPost, http.MethodOptions)
 	authedRouter.HandleFunc("/api/friends/{id}", relationsClient.RemoveFriend).Methods(http.MethodDelete, http.MethodOptions)

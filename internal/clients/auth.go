@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	authv1 "discord_backend/gen/go/auth"
+	relationsv1 "discord_backend/gen/go/relations"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -27,7 +28,8 @@ const (
 )
 
 type AuthClient struct {
-	authApi authv1.AuthClient
+	authApi      authv1.AuthClient
+	relationsApi relationsv1.RelationsClient
 }
 
 type loginRequest struct {
@@ -209,7 +211,7 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 
 	var createdProfile ProfileResponse
 
-	err = json.Unmarshal(profileBody, &createdProfile.Profile)
+	err = json.Unmarshal(profileBody, &createdProfile)
 
 	if err != nil {
 		slog.Error(" client.Do client Regsiter error: " + err.Error())
@@ -222,6 +224,7 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 		Password: r.FormValue("password"),
 		Id:       createdProfile.Profile.ID,
 	}
+	slog.Info(" RegisterRequest.Id: " + request.Id)
 
 	registerResponse, err := c.authApi.Register(r.Context(), request)
 	if err != nil {
@@ -238,6 +241,20 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 	_, err = json.Marshal(registerResponse)
 	if err != nil {
 		slog.Error(" json.Marshal client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	relationRequest := &relationsv1.CreateNewRelationRequest{
+		UserId: createdProfile.Profile.ID,
+	}
+	slog.Info(" relationRequest.UserId: " + relationRequest.UserId)
+	slog.Info(" createdProfile.Profile.ID: " + createdProfile.Profile.ID)
+
+	_, err = c.relationsApi.CreateNewRelation(r.Context(), relationRequest)
+
+	if err != nil {
+		slog.Error("client Regsiter CreateNewRelation error: " + err.Error())
 		utils.WriteError(w, "Internal error")
 		return
 	}
@@ -363,7 +380,7 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 	w.Write(profileJson)
 }
 
-func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthClient, error) {
+func NewAuthClient(addr string, timeout time.Duration, retriesCount int, relationsApi relationsv1.RelationsClient) (*AuthClient, error) {
 	retryOptions := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),
 		grpcretry.WithMax(uint(retriesCount)),
@@ -379,6 +396,7 @@ func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthC
 	}
 
 	return &AuthClient{
-		authApi: authv1.NewAuthClient(cc),
+		authApi:      authv1.NewAuthClient(cc),
+		relationsApi: relationsApi,
 	}, nil
 }
