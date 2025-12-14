@@ -59,6 +59,68 @@ func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (c *RelationsClient) GetUserRelations(w http.ResponseWriter, r *http.Request) {
+	type getRelationsRequest struct {
+		UserId string   `json:"userId"`
+		Ids    []string `json:"ids"`
+	}
+	type singleResponseEntity struct {
+		Id          string `json:"id"`
+		IsFriend    bool   `json:"isFriend"`
+		IsIncoming  bool   `json:"isIncoming"`
+		IsOutcoming bool   `json:"isOutcoming"`
+		IsBlocked   bool   `json:"isBlocked"`
+	}
+	type getRelationsResponse struct {
+		Error string                 `json:"error,omitempty"`
+		Datas []singleResponseEntity `json:"datas"`
+	}
+
+	var requestData getRelationsRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&requestData); err != nil {
+		slog.Error("[GetRelations] Invalid JSON format: " + err.Error())
+		utils.WriteError(w, "[GetRelations] Invalid JSON format: "+err.Error())
+		return
+	}
+
+	request := &relationsv1.GetUserRelationsRequest{
+		SenderId:  requestData.UserId,
+		TargetIds: requestData.Ids,
+	}
+
+	result, err := c.relationsAPi.GetUserRelations(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetRelations] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	var datas []singleResponseEntity
+	for _, data := range result.Datas {
+		datas = append(datas, singleResponseEntity{
+			Id:          data.Id,
+			IsFriend:    data.IsFriend,
+			IsBlocked:   data.IsBlocked,
+			IsOutcoming: data.IsOutgoing,
+			IsIncoming:  data.IsIncoming,
+		})
+	}
+	resp := getRelationsResponse{
+		Datas: datas,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetRelation] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
 func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request) {
 	type sendFriendOfferRequest struct {
 		FriendId string `json:"friendId"`
@@ -573,7 +635,7 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	profiles := GetProfiles(result.Friends)
+	profiles := profilesClient.GetProfiles(result.Friends)
 
 	resp := getAllFriendsResponse{
 		Friends: profiles,
@@ -642,7 +704,7 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAllIncomingssResponse{
 		Incomings: profiles,
@@ -707,7 +769,7 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAllOutgoingsResponse{
 		Outcomings: profiles,
@@ -772,7 +834,7 @@ func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAlBlocksResponse{
 		Blocks: profiles,

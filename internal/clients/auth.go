@@ -224,7 +224,6 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 		Password: r.FormValue("password"),
 		Id:       createdProfile.Profile.ID,
 	}
-	slog.Info(" RegisterRequest.Id: " + request.Id)
 
 	registerResponse, err := c.authApi.Register(r.Context(), request)
 	if err != nil {
@@ -248,8 +247,6 @@ func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 	relationRequest := &relationsv1.CreateNewRelationRequest{
 		UserId: createdProfile.Profile.ID,
 	}
-	slog.Info(" relationRequest.UserId: " + relationRequest.UserId)
-	slog.Info(" createdProfile.Profile.ID: " + createdProfile.Profile.ID)
 
 	_, err = c.relationsApi.CreateNewRelation(r.Context(), relationRequest)
 
@@ -367,7 +364,7 @@ func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
 
 	var ids = []string{isRegisteredResponse.UserId}
 
-	profiles := GetProfiles(ids)
+	profiles := profilesClient.GetProfiles(ids)
 	profileJson, err := json.Marshal(profiles[0])
 
 	if err != nil {

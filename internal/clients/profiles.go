@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	relationsv1 "discord_backend/gen/go/relations"
 	"discord_backend/internal/middlewares"
 	"discord_backend/internal/utils"
 	"encoding/json"
@@ -9,6 +10,7 @@ import (
 	"log/slog"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -26,7 +28,25 @@ type Profile struct {
 	Status    string `json:"status"`
 }
 
-func GetProfiles(profileIds []string) []Profile {
+type RelatedProfile struct {
+	ID          string `json:"id"`
+	ShortLink   string `json:"short_link"`
+	Mail        string `json:"mail"`
+	Username    string `json:"username"`
+	CreatedAt   int64  `json:"created_at"`
+	AvatarURL   string `json:"avatar_url"`
+	Status      string `json:"status"`
+	IsFriend    bool   `json:"isFriend"`
+	IsIncoming  bool   `json:"isIncoming"`
+	IsOutcoming bool   `json:"isOutcoming"`
+	IsBlocked   bool   `json:"isBlocked"`
+}
+
+type ProfilesClient struct {
+	relationsApi relationsv1.RelationsClient
+}
+
+func (c *ProfilesClient) GetProfiles(profileIds []string) []Profile {
 	if len(profileIds) == 0 {
 		return []Profile{}
 	}
@@ -73,10 +93,10 @@ func GetProfiles(profileIds []string) []Profile {
 	return profiles.Profiles
 }
 
-func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
-	url := profileUrl + r.URL.RequestURI()
+func (c *ProfilesClient) HandleGetProfile(w http.ResponseWriter, r *http.Request) {
+	requestUrl := profileUrl + r.URL.RequestURI()
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(requestUrl)
 	if err != nil {
 		slog.Error("client HandleGetProfile error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -93,11 +113,71 @@ func HandleGetProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(resp.StatusCode)
-	w.Write(body)
+	type ProfilesClientResponse struct {
+		Profiles []Profile `json:"profiles"`
+	}
+
+	var profiles ProfilesClientResponse
+	if err := json.Unmarshal(body, &profiles); err != nil {
+		slog.Error("client profiles error: " + err.Error())
+		return
+	}
+
+	var userId string
+	myUrl, _ := url.Parse(r.RequestURI)
+	params, _ := url.ParseQuery(myUrl.RawQuery)
+	userId = params.Get("id")
+	if userId == "" {
+		utils.WriteError(w, "Should have user's id parameter 'id'")
+		return
+	}
+	targetIds := []string{}
+	for _, p := range profiles.Profiles {
+		targetIds = append(targetIds, p.ID)
+	}
+
+	userRelationsResponse, err := c.relationsApi.GetUserRelations(r.Context(), &relationsv1.GetUserRelationsRequest{
+		SenderId:  userId,
+		TargetIds: targetIds,
+	})
+	if err != nil {
+		slog.Error("client HandleGetProfile error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	type RelatedProfiles struct {
+		Profiles []RelatedProfile `json:"profiles"`
+	}
+	var relatedProfiles RelatedProfiles
+
+	for i, p := range profiles.Profiles {
+		relatedProfiles.Profiles = append(relatedProfiles.Profiles, RelatedProfile{
+			ID:          p.ID,
+			AvatarURL:   p.AvatarURL,
+			Mail:        p.Mail,
+			ShortLink:   p.ShortLink,
+			Status:      p.Status,
+			CreatedAt:   p.CreatedAt,
+			Username:    p.Username,
+			IsFriend:    userRelationsResponse.Datas[i].IsFriend,
+			IsIncoming:  userRelationsResponse.Datas[i].IsIncoming,
+			IsOutcoming: userRelationsResponse.Datas[i].IsOutgoing,
+			IsBlocked:   userRelationsResponse.Datas[i].IsBlocked,
+		})
+	}
+	respJson, err := json.Marshal(relatedProfiles)
+	if err != nil {
+		slog.Error("[GetRelation] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
 }
 
-func HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
+func (c *ProfilesClient) HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
 	url := profileUrl + r.URL.RequestURI()
 
 	resp, err := http.Get(url)
@@ -120,7 +200,7 @@ func HandleGetProfileById(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
+func (c *ProfilesClient) HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
 	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
 
 	if err != nil {
@@ -172,7 +252,7 @@ func HandleDeleteProfileById(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
+func (c *ProfilesClient) HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Не удалось разобрать multipart-форму", http.StatusBadRequest)
 		return
@@ -243,7 +323,7 @@ func HandleSaveProfile(w http.ResponseWriter, r *http.Request) {
 	io.Copy(w, resp.Body)
 }
 
-func HandleEditProfileById(w http.ResponseWriter, r *http.Request) {
+func (c *ProfilesClient) HandleEditProfileById(w http.ResponseWriter, r *http.Request) {
 	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
 
 	if err != nil {

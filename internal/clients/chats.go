@@ -174,7 +174,7 @@ func GetProfilesOfChatUsers(chatUsers []ChatUser) []ChatUserProfile {
 		usersIds = append(usersIds, user.Id)
 	}
 
-	usersProfiles := GetProfiles(usersIds)
+	usersProfiles := profilesClient.GetProfiles(usersIds)
 
 	var chatUsersProfiles []ChatUserProfile
 
@@ -414,7 +414,7 @@ func HandleCreateChat(w http.ResponseWriter, r *http.Request) {
 		usersIds = append(usersIds, user.Id)
 	}
 
-	usersProfiles := GetProfiles(usersIds)
+	usersProfiles := profilesClient.GetProfiles(usersIds)
 
 	if len(usersIds) != len(usersProfiles) {
 		w.WriteHeader(http.StatusBadRequest)
@@ -495,7 +495,7 @@ func HandleUpdateChat(w http.ResponseWriter, r *http.Request) {
 		usersIds = append(usersIds, user.Id)
 	}
 
-	usersProfiles := GetProfiles(usersIds)
+	usersProfiles := profilesClient.GetProfiles(usersIds)
 
 	if len(usersIds) != len(usersProfiles) {
 		w.WriteHeader(http.StatusBadRequest)

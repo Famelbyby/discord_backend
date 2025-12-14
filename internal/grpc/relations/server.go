@@ -21,6 +21,7 @@ type Relations interface {
 	BlockUser(ctx context.Context, senderId, toBlockId string) error
 	UnblockUser(ctx context.Context, senderId, toUnblockId string) error
 	GetUserRelation(ctx context.Context, senderId, targetId string) (models.UserRelation, error)
+	GetUserRelations(ctx context.Context, senderId string, targetIds []string) ([]models.UserRelation, error)
 	GetAllFriends(ctx context.Context, senderId string, page, limit int64) ([]string, error)
 	GetAllIncomingOffers(ctx context.Context, senderId string, page int64, limit int64) ([]string, error)
 	GetAllOutgoingOffers(ctx context.Context, senderId string, page int64, limit int64) ([]string, error)
@@ -157,6 +158,30 @@ func (s *serverAPI) GetUserRelation(ctx context.Context, req *relationsv1.GetUse
 		IsIncoming: relation.IsIncoming,
 		IsBlocked:  relation.IsBlocked,
 	}, nil
+}
+
+func (s *serverAPI) GetUserRelations(ctx context.Context, req *relationsv1.GetUserRelationsRequest) (*relationsv1.GetUserRelationsResponse, error) {
+	s.log.Info("[GetUserRelations] grpc started")
+
+	relations, err := s.relations.GetUserRelations(ctx, req.SenderId, req.TargetIds)
+
+	if err != nil {
+		s.log.Error("[GetUserRelation] grpc error: " + err.Error())
+		return nil, fmt.Errorf("%s", "[GetUserRelation] grpc error: "+err.Error())
+	}
+
+	var datas []*relationsv1.UserRelation
+	for i, r := range relations {
+		datas = append(datas, &relationsv1.UserRelation{
+			Id:         req.TargetIds[i],
+			IsFriend:   r.IsFriend,
+			IsBlocked:  r.IsBlocked,
+			IsIncoming: r.IsIncoming,
+			IsOutgoing: r.IsOutcoming,
+		})
+	}
+
+	return &relationsv1.GetUserRelationsResponse{Datas: datas}, nil
 }
 
 func (s *serverAPI) GetAllBlockedUsers(ctx context.Context, req *relationsv1.GetAllBlockedUsersRequest) (*relationsv1.GetAllBlockedUsersResponse, error) {
