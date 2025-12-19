@@ -79,7 +79,10 @@ async def create_chat(
 
 
 @chat_router.get("/{chat_id}")
-async def get_chat(chat: Annotated[ChatORM, Depends(get_chat_by_id)]):
+async def get_chat(
+    chat: Annotated[ChatORM, Depends(get_chat_by_id)], 
+    user_id: str,
+):
 
     if not chat:
         raise HTTPException(
@@ -95,6 +98,20 @@ async def get_chat(chat: Annotated[ChatORM, Depends(get_chat_by_id)]):
         }
         for user in chat.users
     ]
+    
+    flag = False
+    
+    for user in users:
+        if user["id"] == user_id:
+            flag = True
+            break
+        
+    if not flag:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chat not found"
+        )
+    
     chat_display = ChatDisplay(
         id=chat.id, name=chat.name, lead_id=chat.lead_id, users=users
     )
@@ -195,11 +212,19 @@ async def delete_user_from_chat(
     chat: Annotated[ChatORM, Depends(get_chat_by_id)],
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
 ):
+    if not chat:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat doesn't exist")
 
     if chat.lead_id != lead_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not leader of chat",
+        )
+        
+    if chat.lead_id == user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can not delete yourself"
         )
 
     user_stmt = select(UserORM).where(UserORM.main_id == user_id)

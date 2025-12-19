@@ -38,6 +38,7 @@ services:
       - app-network
     depends_on:
       - postgres
+      - redis
 
   relations_go:
     build:
@@ -96,6 +97,19 @@ services:
     networks:
       - app-network
 
+  redis:
+    image: redis
+    container_name: redis_container
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - app-network
+
   minio:
     <<: *minio-common
     hostname: minio
@@ -131,20 +145,99 @@ services:
     command: >
       sh -c "poetry run alembic upgrade head && poetry run python3 -m main"
     ports:
-      - "9099:9099"
+      - "9091:9091"
     volumes:
       - ./app:/app/app
     networks:
       - app-network
     depends_on:
       - postgres
-
     restart: unless-stopped
+
+  # frontend:
+  #   ports:
+  #     - "3000:3000"
+  #   image: discord-frontend
+  #   container_name: discord_frontend
+  #   networks:
+  #     - app-network
+
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - app-network
+
+  # 2. Kafka Broker
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-container
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-container:29092,PLAINTEXT_HOST://kafka-container:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - app-network
+
+  init-kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - kafka
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: |
+      "
+      # Блокируем выполнение, пока Kafka не будет готова (ждем до 30 сек)
+      echo -e 'Waiting for kafka to be ready...'
+      cub kafka-ready -b kafka-container:29092 1 30
+
+      # Создаем топики
+      echo -e 'Creating kafka topics...'
+      kafka-topics --bootstrap-server kafka-container:29092 --create --if-not-exists --topic chat-in --replication-factor 1 --partitions 1
+      kafka-topics --bootstrap-server kafka-container:29092 --create --if-not-exists --topic chat-out --replication-factor 1 --partitions 1
+
+      echo -e 'Successfully created the following topics:'
+      kafka-topics --bootstrap-server kafka-container:29092 --list
+      "
+    networks:
+      - app-network
+
+  # 3. Kafka UI (Веб-интерфейс)
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka-container:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    depends_on:
+      - kafka
+    networks:
+      - app-network
 volumes:
   minio_data:
   pg_data:
   go_back:
   mongo_data:
+  redis_data:
 
 
 networks:

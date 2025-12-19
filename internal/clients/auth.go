@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	authv1 "discord_backend/gen/go/auth"
+	relationsv1 "discord_backend/gen/go/relations"
 	"discord_backend/internal/utils"
 	"encoding/json"
 	"fmt"
@@ -20,8 +21,15 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+const (
+	maxAge   = time.Hour * 24 * 7
+	sameSite = http.SameSiteDefaultMode
+	secure   = false
+)
+
 type AuthClient struct {
-	authAPi authv1.AuthClient
+	authApi      authv1.AuthClient
+	relationsApi relationsv1.RelationsClient
 }
 
 type loginRequest struct {
@@ -39,15 +47,6 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	type Profile struct {
-		ID        string `json:"id"`
-		ShortLink string `json:"short_link"`
-		Mail      string `json:"mail"`
-		Username  string `json:"username"`
-		CreatedAt int64  `json:"created_at"`
-		AvatarURL string `json:"avatar_url"`
-		Status    string `json:"status"`
-	}
 	type ProfilesResponse struct {
 		Profiles []Profile `json:"profiles"`
 	}
@@ -79,12 +78,22 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(profilesResponse.Profiles) == 0 {
+		slog.Error("client Login error: invalid credentials")
+		w.WriteHeader(http.StatusBadRequest)
+		utils.WriteError(w, "Invalid credentials")
+
+		return
+	}
+
 	request := &authv1.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
+		Id:       profilesResponse.Profiles[0].ID,
 	}
 
-	_, err = c.authAPi.Login(context.Background(), request)
+	loginResponse, err := c.authApi.Login(context.Background(), request)
+
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid credentials") {
 			utils.WriteError(w, "Invalid credentials")
@@ -94,6 +103,16 @@ func (c *AuthClient) Login(w http.ResponseWriter, r *http.Request) {
 		utils.WriteError(w, "Internal error")
 		return
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(loginResponse.SessionId),
+		MaxAge:   int(maxAge / 1_000_000_000),
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: sameSite,
+		Secure:   secure,
+	})
 
 	responseJson, err := json.Marshal(profilesResponse.Profiles[0])
 	if err != nil {
@@ -111,7 +130,7 @@ type registerRequest struct {
 	Password string `form:"password"`
 }
 
-func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
+func (c *AuthClient) Register(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(10 << 20); err != nil {
 		http.Error(w, "Не удалось разобрать multipart-форму", http.StatusBadRequest)
 		return
@@ -178,17 +197,35 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	req := registerRequest{
-		Email:    r.FormValue("mail"),
-		Password: r.FormValue("password"),
+	profileBody, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		slog.Error(" client.Do client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	type ProfileResponse struct {
+		Profile Profile `json:"profile"`
+	}
+
+	var createdProfile ProfileResponse
+
+	err = json.Unmarshal(profileBody, &createdProfile)
+
+	if err != nil {
+		slog.Error(" client.Do client Regsiter error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
 	}
 
 	request := &authv1.RegisterRequest{
-		Email:    req.Email,
-		Password: req.Password,
+		Email:    r.FormValue("mail"),
+		Password: r.FormValue("password"),
+		Id:       createdProfile.Profile.ID,
 	}
 
-	registerResponse, err := c.authAPi.Register(r.Context(), request)
+	registerResponse, err := c.authApi.Register(r.Context(), request)
 	if err != nil {
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			utils.WriteError(w, "User already exists")
@@ -207,6 +244,18 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	relationRequest := &relationsv1.CreateNewRelationRequest{
+		UserId: createdProfile.Profile.ID,
+	}
+
+	_, err = c.relationsApi.CreateNewRelation(r.Context(), relationRequest)
+
+	if err != nil {
+		slog.Error("client Regsiter CreateNewRelation error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
 	// 4. (Опционально) Пересылка ответа от целевого сервера обратно клиенту.
 	// Копируем заголовки ответа.
 
@@ -215,12 +264,120 @@ func (c *AuthClient) Regsiter(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(key, value)
 		}
 	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    string(registerResponse.SessionId),
+		MaxAge:   int(maxAge / 1_000_000_000),
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: sameSite,
+		Secure:   secure,
+	})
+
 	// Устанавливаем статус-код ответа.
 	w.WriteHeader(resp.StatusCode)
 	// Копируем тело ответа.
-	io.Copy(w, resp.Body)
+	w.Write(profileBody)
 }
-func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthClient, error) {
+
+func (c *AuthClient) Logout(w http.ResponseWriter, r *http.Request) {
+	sessionCookie, err := r.Cookie("session_id")
+
+	if err == http.ErrNoCookie {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "unauthorized")
+		return
+	}
+
+	if err != nil {
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	request := &authv1.LogoutRequest{
+		SessionId: sessionCookie.Value,
+	}
+
+	_, err = c.authApi.Logout(context.Background(), request)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no session") {
+			slog.Error("client login error: no session")
+			utils.WriteError(w, "unauthorized")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		slog.Error("client Login error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    "",
+		MaxAge:   -1,
+		Expires:  time.Now().Add(maxAge),
+		HttpOnly: true,
+		SameSite: sameSite,
+		Secure:   secure,
+	})
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (c *AuthClient) IsRegistered(w http.ResponseWriter, r *http.Request) {
+	sessionCookie, err := r.Cookie("session_id")
+
+	if err == http.ErrNoCookie {
+		slog.Error("client IsRegistered error: " + err.Error())
+		utils.WriteError(w, "unauthorized")
+		return
+	}
+
+	if err != nil {
+		slog.Error("client IsRegistered error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	request := &authv1.IsRegisteredRequest{
+		SessionId: sessionCookie.Value,
+	}
+
+	isRegisteredResponse, err := c.authApi.IsRegistered(context.Background(), request)
+
+	if err != nil {
+		if strings.Contains(err.Error(), "no session") {
+			slog.Error("client IsRegistered error: no session")
+			utils.WriteError(w, "unauthorized")
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		slog.Error("client IsRegistered error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	var ids = []string{isRegisteredResponse.UserId}
+
+	profiles := profilesClient.GetProfiles(ids)
+	profileJson, err := json.Marshal(profiles[0])
+
+	if err != nil {
+		slog.Error("client IsRegistered error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(profileJson)
+}
+
+func NewAuthClient(addr string, timeout time.Duration, retriesCount int, relationsApi relationsv1.RelationsClient) (*AuthClient, error) {
 	retryOptions := []grpcretry.CallOption{
 		grpcretry.WithCodes(codes.NotFound, codes.Aborted, codes.DeadlineExceeded),
 		grpcretry.WithMax(uint(retriesCount)),
@@ -236,6 +393,7 @@ func NewAuthClient(addr string, timeout time.Duration, retriesCount int) (*AuthC
 	}
 
 	return &AuthClient{
-		authAPi: authv1.NewAuthClient(cc),
+		authApi:      authv1.NewAuthClient(cc),
+		relationsApi: relationsApi,
 	}, nil
 }

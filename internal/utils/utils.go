@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 const DefaultSessionLifetime = 10 * time.Hour
@@ -69,4 +72,34 @@ func RemoveByValue(slice []string, value string) []string {
 		}
 	}
 	return result
+}
+
+func CompareUserIDsInQuery(r *http.Request, sessionUserKey any, userIdKey string) error {
+	u, err := url.Parse(r.URL.Host + r.URL.RequestURI())
+
+	if err != nil {
+		return err
+	}
+
+	params := u.Query()
+	userId := params.Get(userIdKey)
+	sessionUserId := r.Context().Value(sessionUserKey)
+
+	if sessionUserId != userId {
+		return fmt.Errorf("session user ID and provided ID mismatch")
+	}
+
+	return nil
+}
+
+func CompareUserIDsInParams(r *http.Request, sessionUserKey any, userIdKey string) error {
+	vars := mux.Vars(r)
+	userId := vars[userIdKey]
+	sessionUserId := r.Context().Value(sessionUserKey)
+
+	if sessionUserId != userId {
+		return fmt.Errorf("session user ID and provided ID mismatch: %s, %s", userId, sessionUserId)
+	}
+
+	return nil
 }

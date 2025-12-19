@@ -5,6 +5,7 @@ import (
 	grpcApp "discord_backend/internal/app/grpc/auth"
 	"discord_backend/internal/services/auth"
 	"discord_backend/internal/storage/postgre"
+	"discord_backend/internal/storage/redis"
 	"log/slog"
 	"time"
 )
@@ -18,12 +19,19 @@ func New(
 	grpcPort int,
 	tokenTTL time.Duration,
 ) *App {
-	storage, err := postgre.New()
+	postgresStorage, err := postgre.New()
+
 	if err != nil {
 		panic(err)
 	}
 
-	authService := auth.New(log, storage, storage, tokenTTL)
+	redisStorage, err := redis.NewClient()
+
+	if err != nil {
+		panic(err)
+	}
+
+	authService := auth.New(log, postgresStorage, postgresStorage, redisStorage, tokenTTL)
 
 	grpcApp := grpcApp.New(log, authService, grpcPort)
 

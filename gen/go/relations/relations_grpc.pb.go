@@ -32,6 +32,7 @@ type RelationsClient interface {
 	BlockUser(ctx context.Context, in *BlockUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UnblockUser(ctx context.Context, in *UnblockUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetUserRelation(ctx context.Context, in *GetUserRelationRequest, opts ...grpc.CallOption) (*GetUserRelationResponse, error)
+	GetUserRelations(ctx context.Context, in *GetUserRelationsRequest, opts ...grpc.CallOption) (*GetUserRelationsResponse, error)
 	GetAllFriends(ctx context.Context, in *GetAllFriendsRequest, opts ...grpc.CallOption) (*GetAllFriendsResponse, error)
 	GetAllIncomingOffers(ctx context.Context, in *GetAllIncomingOffersRequest, opts ...grpc.CallOption) (*GetAllIncomingOffersResponse, error)
 	GetAllOutgoingOffers(ctx context.Context, in *GetAllOutgoingOffersRequest, opts ...grpc.CallOption) (*GetAllOutgoingOffersResponse, error)
@@ -127,6 +128,15 @@ func (c *relationsClient) GetUserRelation(ctx context.Context, in *GetUserRelati
 	return out, nil
 }
 
+func (c *relationsClient) GetUserRelations(ctx context.Context, in *GetUserRelationsRequest, opts ...grpc.CallOption) (*GetUserRelationsResponse, error) {
+	out := new(GetUserRelationsResponse)
+	err := c.cc.Invoke(ctx, "/relations.Relations/GetUserRelations", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *relationsClient) GetAllFriends(ctx context.Context, in *GetAllFriendsRequest, opts ...grpc.CallOption) (*GetAllFriendsResponse, error) {
 	out := new(GetAllFriendsResponse)
 	err := c.cc.Invoke(ctx, "/relations.Relations/GetAllFriends", in, out, opts...)
@@ -176,6 +186,7 @@ type RelationsServer interface {
 	BlockUser(context.Context, *BlockUserRequest) (*emptypb.Empty, error)
 	UnblockUser(context.Context, *UnblockUserRequest) (*emptypb.Empty, error)
 	GetUserRelation(context.Context, *GetUserRelationRequest) (*GetUserRelationResponse, error)
+	GetUserRelations(context.Context, *GetUserRelationsRequest) (*GetUserRelationsResponse, error)
 	GetAllFriends(context.Context, *GetAllFriendsRequest) (*GetAllFriendsResponse, error)
 	GetAllIncomingOffers(context.Context, *GetAllIncomingOffersRequest) (*GetAllIncomingOffersResponse, error)
 	GetAllOutgoingOffers(context.Context, *GetAllOutgoingOffersRequest) (*GetAllOutgoingOffersResponse, error)
@@ -213,6 +224,9 @@ func (UnimplementedRelationsServer) UnblockUser(context.Context, *UnblockUserReq
 }
 func (UnimplementedRelationsServer) GetUserRelation(context.Context, *GetUserRelationRequest) (*GetUserRelationResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserRelation not implemented")
+}
+func (UnimplementedRelationsServer) GetUserRelations(context.Context, *GetUserRelationsRequest) (*GetUserRelationsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUserRelations not implemented")
 }
 func (UnimplementedRelationsServer) GetAllFriends(context.Context, *GetAllFriendsRequest) (*GetAllFriendsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAllFriends not implemented")
@@ -401,6 +415,24 @@ func _Relations_GetUserRelation_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Relations_GetUserRelations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUserRelationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RelationsServer).GetUserRelations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/relations.Relations/GetUserRelations",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RelationsServer).GetUserRelations(ctx, req.(*GetUserRelationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Relations_GetAllFriends_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAllFriendsRequest)
 	if err := dec(in); err != nil {
@@ -515,6 +547,10 @@ var Relations_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetUserRelation",
 			Handler:    _Relations_GetUserRelation_Handler,
+		},
+		{
+			MethodName: "GetUserRelations",
+			Handler:    _Relations_GetUserRelations_Handler,
 		},
 		{
 			MethodName: "GetAllFriends",

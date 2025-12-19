@@ -2,6 +2,7 @@ package main
 
 import (
 	relationsv1 "discord_backend/gen/go/relations"
+	"discord_backend/internal/middlewares"
 	"discord_backend/internal/storage"
 	"discord_backend/internal/utils"
 	"encoding/json"
@@ -58,6 +59,68 @@ func (c *RelationsClient) CreateNewRelation(w http.ResponseWriter, r *http.Reque
 	w.WriteHeader(http.StatusCreated)
 }
 
+func (c *RelationsClient) GetUserRelations(w http.ResponseWriter, r *http.Request) {
+	type getRelationsRequest struct {
+		UserId string   `json:"userId"`
+		Ids    []string `json:"ids"`
+	}
+	type singleResponseEntity struct {
+		Id          string `json:"id"`
+		IsFriend    bool   `json:"isFriend"`
+		IsIncoming  bool   `json:"isIncoming"`
+		IsOutcoming bool   `json:"isOutcoming"`
+		IsBlocked   bool   `json:"isBlocked"`
+	}
+	type getRelationsResponse struct {
+		Error string                 `json:"error,omitempty"`
+		Datas []singleResponseEntity `json:"datas"`
+	}
+
+	var requestData getRelationsRequest
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&requestData); err != nil {
+		slog.Error("[GetRelations] Invalid JSON format: " + err.Error())
+		utils.WriteError(w, "[GetRelations] Invalid JSON format: "+err.Error())
+		return
+	}
+
+	request := &relationsv1.GetUserRelationsRequest{
+		SenderId:  requestData.UserId,
+		TargetIds: requestData.Ids,
+	}
+
+	result, err := c.relationsAPi.GetUserRelations(r.Context(), request)
+	if err != nil {
+		slog.Error("[GetRelations] client error: " + err.Error())
+		outputError := "Internal error"
+		utils.WriteError(w, outputError)
+		return
+	}
+
+	var datas []singleResponseEntity
+	for _, data := range result.Datas {
+		datas = append(datas, singleResponseEntity{
+			Id:          data.Id,
+			IsFriend:    data.IsFriend,
+			IsBlocked:   data.IsBlocked,
+			IsOutcoming: data.IsOutgoing,
+			IsIncoming:  data.IsIncoming,
+		})
+	}
+	resp := getRelationsResponse{
+		Datas: datas,
+	}
+	respJson, err := json.Marshal(resp)
+	if err != nil {
+		slog.Error("[GetRelation] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write(respJson)
+}
+
 func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request) {
 	type sendFriendOfferRequest struct {
 		FriendId string `json:"friendId"`
@@ -79,6 +142,17 @@ func (c *RelationsClient) SendFriendOffer(w http.ResponseWriter, r *http.Request
 
 	vars := mux.Vars(r)
 	senderId := vars["id"]
+
+	err = utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[SendFriendOffer] senderId=" + senderId)
 
 	request := &relationsv1.SendFriendOfferRequest{
@@ -139,6 +213,17 @@ func (c *RelationsClient) AcceptFriendOffer(w http.ResponseWriter, r *http.Reque
 
 	vars := mux.Vars(r)
 	recieverId := vars["id"]
+
+	err = utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[AcceptFriendOffer] recieverId=" + recieverId)
 
 	request := &relationsv1.AcceptFriendOfferRequest{
@@ -196,6 +281,17 @@ func (c *RelationsClient) DeclineFriendOffer(w http.ResponseWriter, r *http.Requ
 
 	vars := mux.Vars(r)
 	recieverId := vars["id"]
+
+	err = utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[DeclineFriendOffer] recieverId=" + recieverId)
 
 	request := &relationsv1.DeclineFriendOfferRequest{
@@ -238,6 +334,17 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 
 	vars := mux.Vars(r)
 	senderId := vars["id"]
+
+	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[CancelFriendOffer] senderId=" + senderId)
 
 	friendId := params.Get("friendId")
@@ -251,7 +358,7 @@ func (c *RelationsClient) CancelFriendOffer(w http.ResponseWriter, r *http.Reque
 		SenderId:   senderId,
 	}
 
-	_, err := c.relationsAPi.CancelFriendOffer(r.Context(), request)
+	_, err = c.relationsAPi.CancelFriendOffer(r.Context(), request)
 	if err != nil {
 		if strings.Contains(err.Error(), storage.ErrNoOutgoingOffer.Error()) {
 			utils.WriteError(w, storage.ErrNoOutgoingOffer.Error())
@@ -280,6 +387,17 @@ func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	senderId := vars["id"]
+
+	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[RemoveFriend] senderId=" + senderId)
 
 	friendId := params.Get("friendId")
@@ -293,7 +411,7 @@ func (c *RelationsClient) RemoveFriend(w http.ResponseWriter, r *http.Request) {
 		SenderId:   senderId,
 	}
 
-	_, err := c.relationsAPi.RemoveFriend(r.Context(), request)
+	_, err = c.relationsAPi.RemoveFriend(r.Context(), request)
 	if err != nil {
 		slog.Error("[RemoveFriend] client error: " + err.Error())
 		if strings.Contains(err.Error(), storage.ErrUserIsntFriend.Error()) {
@@ -323,6 +441,17 @@ func (c *RelationsClient) BlockUser(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	senderId := vars["id"]
+
+	err = utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[BlockUser] senderId=" + senderId)
 
 	request := &relationsv1.BlockUserRequest{
@@ -354,6 +483,17 @@ func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
 
 	vars := mux.Vars(r)
 	senderId := vars["id"]
+
+	err := utils.CompareUserIDsInParams(r, middlewares.UserKey, "id")
+
+	if err != nil {
+		slog.Error("[SendFriendOffer] client error: " + err.Error())
+		utils.WriteError(w, "Internal error")
+		w.WriteHeader(http.StatusForbidden)
+
+		return
+	}
+
 	slog.Info("[UnblockUser] senderId=" + senderId)
 
 	profileId := params.Get("profileId")
@@ -374,7 +514,7 @@ func (c *RelationsClient) UnblockUser(w http.ResponseWriter, r *http.Request) {
 		SenderId:    senderId,
 	}
 
-	_, err := c.relationsAPi.UnblockUser(r.Context(), request)
+	_, err = c.relationsAPi.UnblockUser(r.Context(), request)
 	if err != nil {
 		slog.Error("[UnblockUser] client error: " + err.Error())
 		outputError := "Internal error"
@@ -449,7 +589,7 @@ func (c *RelationsClient) GetRelation(w http.ResponseWriter, r *http.Request) {
 func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) {
 	type getAllFriendsResponse struct {
 		Error   string    `json:"error,omitempty"`
-		Friends []Profile `json:"friends,omitempty"`
+		Friends []Profile `json:"friends"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -495,13 +635,16 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	profiles := GetProfiles(result.Friends)
+	profiles := profilesClient.GetProfiles(result.Friends)
 
 	resp := getAllFriendsResponse{
 		Friends: profiles,
 	}
 
 	respJson, err := json.Marshal(resp)
+
+	fmt.Println(string(respJson))
+
 	if err != nil {
 		slog.Error("[GetAllFriends] client error: " + err.Error())
 		utils.WriteError(w, "Internal error")
@@ -515,7 +658,7 @@ func (c *RelationsClient) GetAllFriends(w http.ResponseWriter, r *http.Request) 
 func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllIncomingssResponse struct {
 		Error     string    `json:"error,omitempty"`
-		Incomings []Profile `json:"incomings,omitempty"`
+		Incomings []Profile `json:"incomings"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -561,7 +704,7 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAllIncomingssResponse{
 		Incomings: profiles,
@@ -580,7 +723,7 @@ func (c *RelationsClient) GetAllIncomingOffers(w http.ResponseWriter, r *http.Re
 func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Request) {
 	type getAllOutgoingsResponse struct {
 		Error      string    `json:"error,omitempty"`
-		Outcomings []Profile `json:"outcomings,omitempty"`
+		Outcomings []Profile `json:"outcomings"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -626,7 +769,7 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAllOutgoingsResponse{
 		Outcomings: profiles,
@@ -645,7 +788,7 @@ func (c *RelationsClient) GetAllOutgoingOffers(w http.ResponseWriter, r *http.Re
 func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Request) {
 	type getAlBlocksResponse struct {
 		Error  string    `json:"error,omitempty"`
-		Blocks []Profile `json:"blocks,omitempty"`
+		Blocks []Profile `json:"blocks"`
 	}
 
 	myUrl, _ := url.Parse(r.RequestURI)
@@ -691,7 +834,7 @@ func (c *RelationsClient) GetAllBlockedUsers(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	profiles := GetProfiles(result.Ids)
+	profiles := profilesClient.GetProfiles(result.Ids)
 
 	resp := getAlBlocksResponse{
 		Blocks: profiles,

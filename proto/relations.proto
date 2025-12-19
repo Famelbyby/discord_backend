@@ -14,6 +14,7 @@ service Relations {
   rpc BlockUser (BlockUserRequest) returns (google.protobuf.Empty){}
   rpc UnblockUser (UnblockUserRequest) returns (google.protobuf.Empty){}
   rpc GetUserRelation (GetUserRelationRequest) returns (GetUserRelationResponse);
+  rpc GetUserRelations (GetUserRelationsRequest) returns (GetUserRelationsResponse);
   rpc GetAllFriends (GetAllFriendsRequest) returns (GetAllFriendsResponse);
   rpc GetAllIncomingOffers (GetAllIncomingOffersRequest) returns (GetAllIncomingOffersResponse);
   rpc GetAllOutgoingOffers (GetAllOutgoingOffersRequest) returns (GetAllOutgoingOffersResponse);
@@ -62,11 +63,28 @@ message GetUserRelationRequest{
   string targetId=2;
 }
 
+message GetUserRelationsRequest{
+  string senderId=1;
+  repeated string targetIds=2;
+}
+
 message GetUserRelationResponse{
   bool isFriend=1;
   bool isIncoming=2;
   bool isOutgoing=3;
   bool isBlocked=4;
+}
+
+message UserRelation{
+  string id = 1;
+  bool isFriend=2;
+  bool isIncoming=3;
+  bool isOutgoing=4;
+  bool isBlocked=5;
+}
+
+message GetUserRelationsResponse{
+  repeated UserRelation datas=1;
 }
 
 message GetAllFriendsRequest{

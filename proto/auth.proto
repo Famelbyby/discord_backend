@@ -13,6 +13,7 @@ service Auth {
   // IsAdmin checks whether a user is an admin.
   rpc IsAdmin (IsAdminRequest) returns (IsAdminResponse);
   rpc Logout (LogoutRequest) returns (LogoutResponse);
+  rpc IsRegistered (IsRegisteredRequest) returns (IsRegisteredResponse);
 }
 
 message IsAdminRequest {
@@ -26,25 +27,34 @@ message IsAdminResponse {
 message RegisterRequest {
   string email = 1; // Email of the user to register.
   string password = 2; // Password of the user to register.
+  string id = 3; // User ID to create session token.
 }
 
 message RegisterResponse {
-  int64 user_id = 1; // User ID of the registered user.
+  string session_id = 1; // Session ID of the registered user.
 }
 
 message LoginRequest {
   string email = 1; // Email of the user to login.
   string password = 2; // Password of the user to login.
+  string id = 3; // User ID to create session token.
 }
 
 message LoginResponse {
-  string token = 1; // Auth token of the logged in user.
+  string session_id = 1; // Auth session ID of the logged in user.
 }
 
 message LogoutRequest {
-  string token = 1; // Auth token of the user to logout.
+  string session_id = 1; // Auth token of the user to logout.
 }
 
 message LogoutResponse {
-  bool success = 1; // Indicates whether the logout was successful.
+}
+
+message IsRegisteredRequest {
+  string session_id = 1; // Auth token of the user to logout.
+}
+
+message IsRegisteredResponse {
+  string user_id = 1; //ID of registered user
 }
