@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
 from core.db import db
+from core.config import config
 from chats.shemas import (
     ChatCreate,
     ChatDisplay,
@@ -14,9 +15,40 @@ from typing import Annotated, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
+from fastapi import FastAPI,WebSocket, WebSocketDisconnect, APIRouter, Depends
+from chats.shemas import KafkaProduceMessage
+from contextlib import asynccontextmanager
+from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+import json
+import asyncio
 
 chat_router = APIRouter(prefix="/chat")
+producer: AIOKafkaProducer = None
+consumer: AIOKafkaConsumer = None
 
+
+async def consumer_loop():
+    async for msg in consumer:
+        if msg.value:
+            print("Kafka message:", msg.value.decode())
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global producer
+    global consumer
+    producer = AIOKafkaProducer(bootstrap_servers=config.kafka_url)
+    consumer = AIOKafkaConsumer("chat-in", bootstrap_servers=config.kafka_url)
+    await producer.start()
+    await consumer.start()
+
+    asyncio.create_task(consumer_loop())
+    
+    yield
+    await consumer.stop()
+    await producer.stop()
+
+async def get_producer():
+    return producer
 
 async def get_chat_by_id(
     chat_id: Annotated[str, Path()],
@@ -334,3 +366,21 @@ async def update_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating chat: {str(e)}",
         )
+
+@chat_router.websocket("")
+async def websocket_endpoint(websocket: WebSocket, producer: AIOKafkaProducer = Depends(get_producer)):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+
+            kafka_message = KafkaProduceMessage(**json.loads(data))
+            message_bytes = json.dumps(kafka_message.model_dump()).encode('utf-8')
+            await producer.send_and_wait("chat-out", message_bytes)
+
+            await websocket.send_text(f"Отправлено в Kafka:{str(kafka_message)}")
+            
+    except WebSocketDisconnect:
+        print("WebSocket отключен")
+    except Exception as e:
+        await websocket.send_text(f"Ошибка: {str(e)}")

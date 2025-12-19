@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 RuleType = Literal['camera', 'chat', 'call']
-
+MType = Literal['SEND_MESSAGE','DELETE_MESSAGE','EDIT_MESSAGE']
 DEFAULT_RULES: List[RuleType] = ['camera', 'chat', 'call']
 MAX_USERS = 10
 
@@ -111,6 +111,18 @@ class ChatUpdateResponse(BaseModel):
     users: List[UserInChat]
 
 
+class MessaggePayload(BaseModel):
+    message: str
+    messageId: Optional[str] = Field(default=None)
+
+
+class KafkaProduceMessage(BaseModel):
+    userId: str
+    type: MType
+    chatId: str
+    receiverIds: List[str]
+    payload: MessaggePayload
+    
 async def format_chat_response(
     chat: ChatORM, db: AsyncSession
 ) -> ChatUpdateResponse:
