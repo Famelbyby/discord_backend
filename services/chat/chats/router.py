@@ -15,8 +15,8 @@ from typing import Annotated, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
-from fastapi import FastAPI,WebSocket, WebSocketDisconnect, APIRouter, Depends
-from chats.shemas import KafkaProduceMessage
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter, Depends
+from chats.shemas import KafkaProduceMessage, KafkaConsumeMessage
 from contextlib import asynccontextmanager
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 import json
@@ -30,7 +30,23 @@ consumer: AIOKafkaConsumer = None
 async def consumer_loop():
     async for msg in consumer:
         if msg.value:
-            print("Kafka message:", msg.value.decode())
+
+            await proceed_consume(msg.value.decode())
+
+
+async def proceed_consume(message: str):
+
+    try:
+        message_data = json.loads(message)
+        message = KafkaConsumeMessage(**message_data)
+        print(message)
+
+    except Exception as e:
+        await producer.send_and_wait(
+            "chat-out",
+            f"Ошибка при получении сообщения{str(e)}".encode('utf-8'),
+        )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -42,13 +58,15 @@ async def lifespan(app: FastAPI):
     await consumer.start()
 
     asyncio.create_task(consumer_loop())
-    
+
     yield
     await consumer.stop()
     await producer.stop()
 
+
 async def get_producer():
     return producer
+
 
 async def get_chat_by_id(
     chat_id: Annotated[str, Path()],
@@ -112,7 +130,7 @@ async def create_chat(
 
 @chat_router.get("/{chat_id}")
 async def get_chat(
-    chat: Annotated[ChatORM, Depends(get_chat_by_id)], 
+    chat: Annotated[ChatORM, Depends(get_chat_by_id)],
     user_id: str,
 ):
 
@@ -130,20 +148,19 @@ async def get_chat(
         }
         for user in chat.users
     ]
-    
+
     flag = False
-    
+
     for user in users:
         if user["id"] == user_id:
             flag = True
             break
-        
+
     if not flag:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Chat not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat not found"
         )
-    
+
     chat_display = ChatDisplay(
         id=chat.id, name=chat.name, lead_id=chat.lead_id, users=users
     )
@@ -245,18 +262,20 @@ async def delete_user_from_chat(
     db: Annotated[AsyncSession, Depends(db.get_async_session)],
 ):
     if not chat:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat doesn't exist")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Chat doesn't exist"
+        )
 
     if chat.lead_id != lead_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not leader of chat",
         )
-        
+
     if chat.lead_id == user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can not delete yourself"
+            detail="You can not delete yourself",
         )
 
     user_stmt = select(UserORM).where(UserORM.main_id == user_id)
@@ -366,21 +385,3 @@ async def update_chat(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error updating chat: {str(e)}",
         )
-
-@chat_router.websocket("")
-async def websocket_endpoint(websocket: WebSocket, producer: AIOKafkaProducer = Depends(get_producer)):
-    await websocket.accept()
-    try:
-        while True:
-            data = await websocket.receive_text()
-
-            kafka_message = KafkaProduceMessage(**json.loads(data))
-            message_bytes = json.dumps(kafka_message.model_dump()).encode('utf-8')
-            await producer.send_and_wait("chat-out", message_bytes)
-
-            await websocket.send_text(f"Отправлено в Kafka:{str(kafka_message)}")
-            
-    except WebSocketDisconnect:
-        print("WebSocket отключен")
-    except Exception as e:
-        await websocket.send_text(f"Ошибка: {str(e)}")
