@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Config(BaseSettings):
 
-    db_name: str = "discord"
+    db_name: str = "profile_db"
 
     db_link: str = f"postgres:postgres@postgres:5432/{db_name}"
 

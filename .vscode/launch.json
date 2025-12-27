@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "telegram",
+            "type": "python",
+            "request": "launch",
+            "python": "${workspaceFolder}/aide-telegram-gateway/venv/bin/python",
+            "module": "app.main",
+            "cwd": "${workspaceFolder}/aide-telegram-gateway",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/aide-telegram-gateway/.env",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/aide-telegram-gateway"
+            }
+        },
+        {
+            "name": "crm",
+            "type": "python",
+            "request": "launch",
+            "python": "/home/develop/.cache/pypoetry/virtualenvs/aide-crm-backend-tp4R3AV0-py3.10/bin/python",
+            "module": "app.main",
+            "cwd": "${workspaceFolder}/aide-crm-backend",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}"
+            }
+        },
+    ]
+}

@@ -1,13 +1,14 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Literal, List
-
+from datetime import datetime
 from core.db import db
-
+from beanie import Document
 from models.chat import ChatORM, Association
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+import uuid
 
 RuleType = Literal['camera', 'chat', 'call']
 MType = Literal['SEND_MESSAGE', 'DELETE_MESSAGE', 'EDIT_MESSAGE']
@@ -129,6 +130,19 @@ class KafkaConsumeMessage(BaseModel):
     type: MType
     chatId: str
     payload: MessaggePayload
+
+
+class MessageSave(BaseModel):
+    chatId: str
+    id: str | None = Field(default=str(uuid.uuid4()))
+    payload: str
+    creator_id: str
+    created_at: datetime | None = Field(default=datetime.now())
+    updated_at: datetime | None = Field(default=datetime.now())
+
+
+class MessageDisplay(MessageSave):
+    pass
 
 
 async def format_chat_response(

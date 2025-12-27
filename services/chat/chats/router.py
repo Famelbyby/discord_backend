@@ -1,4 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Path, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Path,
+    Query,
+    FastAPI,
+)
 from core.db import db
 from core.config import config
 from chats.shemas import (
@@ -9,18 +17,25 @@ from chats.shemas import (
     ChatUpdateRequest,
     ChatUpdateResponse,
     format_chat_response,
+    MessageSave,
+    KafkaProduceMessage,
+    KafkaConsumeMessage,
+    MessaggePayload,
+    MessageDisplay,
 )
 from models.chat import ChatORM, UserORM, Association
 from typing import Annotated, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 from sqlalchemy.orm import selectinload
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, APIRouter, Depends
-from chats.shemas import KafkaProduceMessage, KafkaConsumeMessage
+
 from contextlib import asynccontextmanager
 from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
 import json
 import asyncio
+
+from chats.mongo import mongo_document
+
 
 chat_router = APIRouter(prefix="/chat")
 producer: AIOKafkaProducer = None
@@ -34,14 +49,134 @@ async def consumer_loop():
             await proceed_consume(msg.value.decode())
 
 
+async def get_chat_by_id(
+    chat_id: Annotated[str, Path()],
+    db: Annotated[AsyncSession, Depends(db.get_async_session)],
+) -> ChatORM:
+    statement = (
+        select(ChatORM)
+        .options(selectinload(ChatORM.users).selectinload(Association.user))
+        .where(ChatORM.id == chat_id)
+    )
+    result = await db.execute(statement)
+    chat = result.scalar_one_or_none()
+    return chat
+
+
+async def check_chat_exist(
+    chat_id: str,
+) -> bool:
+    async with db.async_session_factory() as session:
+        statement = select(ChatORM).where(ChatORM.id == chat_id)
+        result = await session.execute(statement)
+        result = result.scalar_one_or_none()
+        if result:
+            return True
+        return False
+
+
+async def check_user_message_send(
+    chat_id: str,
+    user_id: str,
+) -> bool:
+
+    async with db.async_session_factory() as session:
+
+        user_stmt = (
+            select(UserORM)
+            .options(
+                selectinload(UserORM.chats).selectinload(Association.chat)
+            )
+            .where(UserORM.main_id == user_id)
+        )
+        user_result = await session.execute(user_stmt)
+        user: UserORM | None = user_result.scalar_one_or_none()
+
+        if not user:
+            return False
+
+        user.chats = [
+            assoc
+            for assoc in user.chats
+            if assoc.chat and assoc.chat.id == chat_id
+        ]
+
+        if not user.chats:
+            return False
+
+        if "chat" not in user.chats[0].rules:
+            return False
+
+        return True
+
+
+async def get_users_by_chat_id(chat_id: str):
+    async with db.async_session_factory() as session:
+        chat_stmt = (
+            select(ChatORM)
+            .options(
+                selectinload(ChatORM.users).selectinload(Association.user)
+            )
+            .where(ChatORM.id == chat_id)
+        )
+        result = await session.execute(chat_stmt)
+        result = result.scalar_one_or_none()
+
+        if not result:
+            return None
+
+        chat_users = [user.user.main_id for user in result.users]
+
+        return chat_users
+
+
 async def proceed_consume(message: str):
 
     try:
         message_data = json.loads(message)
-        message = KafkaConsumeMessage(**message_data)
-        print(message)
+        kafka_message = KafkaConsumeMessage(**message_data)
+
+        if await check_chat_exist(
+            kafka_message.chatId
+        ) and await check_user_message_send(
+            kafka_message.chatId, kafka_message.userId
+        ):
+            chat_users = await get_users_by_chat_id(kafka_message.chatId)
+            if chat_users:
+
+                kafka_produce_message = KafkaProduceMessage(
+                    userId=kafka_message.userId,
+                    type=kafka_message.type,
+                    chatId=kafka_message.chatId,
+                    receiverIds=chat_users,
+                    payload=MessaggePayload(
+                        message=kafka_message.payload.message
+                    ),
+                )
+
+                message_to_save = MessageSave(
+                    chatId=kafka_message.chatId,
+                    payload=kafka_message.payload.message,
+                    creator_id=kafka_message.userId,
+                )
+
+                result = mongo_document.insert_chat_message(message_to_save)
+                if result.acknowledged:
+                    await producer.send_and_wait(
+                        "chat-out",
+                        kafka_produce_message.model_dump_json().encode(
+                            'utf-8'
+                        ),
+                    )
+                print(result)
+        else:
+            await producer.send_and_wait(
+                "chat-out",
+                "Не найден чат или пользователь".encode('utf-8'),
+            )
 
     except Exception as e:
+        print(e)
         await producer.send_and_wait(
             "chat-out",
             f"Ошибка при получении сообщения{str(e)}".encode('utf-8'),
@@ -68,18 +203,12 @@ async def get_producer():
     return producer
 
 
-async def get_chat_by_id(
-    chat_id: Annotated[str, Path()],
-    db: Annotated[AsyncSession, Depends(db.get_async_session)],
-) -> ChatORM:
-    statement = (
-        select(ChatORM)
-        .options(selectinload(ChatORM.users).selectinload(Association.user))
-        .where(ChatORM.id == chat_id)
-    )
-    result = await db.execute(statement)
-    chat = result.scalar_one_or_none()
-    return chat
+@chat_router.get("/{chat_id}/messages", status_code=status.HTTP_200_OK)
+async def get_chat_messages(chat_id: str):
+
+    result = mongo_document.find_chat_messages(chat_id=chat_id)
+
+    return [MessageDisplay(**res) for res in result]
 
 
 @chat_router.post("/", status_code=status.HTTP_201_CREATED)

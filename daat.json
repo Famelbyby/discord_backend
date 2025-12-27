@@ -1,6 +1,6 @@
 {
     "userId": "string",
-    "type": "MType",
+    "type": "SEND_MESSAGE",
     "chatId": "string",
     "payload": {
         "message": "string",
